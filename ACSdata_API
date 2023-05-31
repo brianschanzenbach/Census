@@ -1,0 +1,358 @@
+import pandas as pd
+import csv
+import requests
+import numpy
+import json
+import arcpy
+import os
+import glob
+import xlwt
+import shutil
+from time import strftime
+from datetime import datetime, timedelta
+import gc
+
+arcpy.env.overwriteOutput=True
+
+
+"""
+The following lists are the variables in the ACS API output. Maximum of 50 can be called at once:
+"""
+
+ACSData_path = 'M:/08_Geography/GEO/ArcProjects/Directories/Brian/Captsone/ACS_Data/'
+variables = [['B01001_001E','B01001_001M','B01001_002E','B01001_002M','B01001_003E','B01001_003M','B01001_004E','B01001_004M','B01001_005E','B01001_005M','B01001_006E','B01001_006M','B01001_007E','B01001_007M','B01001_008E','B01001_008M','B01001_009E','B01001_009M','B01001_010E','B01001_010M','B01001_011E','B01001_011M','B01001_012E','B01001_012M','B01001_013E','B01001_013M','B01001_014E','B01001_014M','B01001_015E','B01001_015M','B01001_016E','B01001_016M','B01001_017E','B01001_017M','B01001_018E','B01001_018M','B01001_019E','B01001_019M','B01001_020E','B01001_020M'],['B01001_021E','B01001_021M','B01001_022E','B01001_022M','B01001_023E','B01001_023M','B01001_024E','B01001_024M','B01001_025E','B01001_025M','B01001_026E','B01001_026M','B01001_027E','B01001_027M','B01001_028E','B01001_028M','B01001_029E','B01001_029M','B01001_030E','B01001_030M','B01001_031E','B01001_031M','B01001_032E','B01001_032M','B01001_033E','B01001_033M','B01001_034E','B01001_034M','B01001_035E','B01001_035M','B01001_036E','B01001_036M','B01001_037E','B01001_037M','B01001_038E','B01001_038M','B01001_039E','B01001_039M','B01001_040E'],['B01001_040M','B01001_041E','B01001_041M','B01001_042E','B01001_042M','B01001_043E','B01001_043M','B01001_044E','B01001_044M','B01001_045E','B01001_045M','B01001_046E','B01001_046M','B01001_047E','B01001_047M','B01001_048E','B01001_048M','B01001_049E','B01001_049M','B01001_001MA','B01001_001EA','B01001_002EA','B01001_002MA','B01001_003MA','B01001_003EA','B01001_004MA','B01001_004EA','B01001_005MA','B01001_005EA','B01001_006MA','B01001_006EA','B01001_007EA','B01001_007MA','B01001_008EA','B01001_008MA','B01001_009MA','B01001_009EA','B01001_010MA','B01001_010EA'],['B01001_011EA','B01001_011MA','B01001_012MA','B01001_012EA','B01001_013MA','B01001_013EA','B01001_014MA','B01001_014EA','B01001_015EA','B01001_015MA','B01001_016MA','B01001_016EA','B01001_017MA','B01001_017EA','B01001_018MA','B01001_018EA','B01001_019MA','B01001_019EA','B01001_020MA','B01001_020EA','B01001_021MA','B01001_021EA','B01001_022MA','B01001_022EA','B01001_023MA','B01001_023EA','B01001_024EA','B01001_024MA','B01001_025EA','B01001_025MA','B01001_026MA','B01001_026EA','B01001_027MA','B01001_027EA','B01001_028MA','B01001_028EA','B01001_029MA','B01001_029EA','B01001_030MA'],['B01001_030EA','B01001_031EA','B01001_031MA','B01001_032EA','B01001_032MA','B01001_033MA','B01001_033EA','B01001_034MA','B01001_034EA','B01001_035EA','B01001_035MA','B01001_036EA','B01001_036MA','B01001_037MA','B01001_037EA','B01001_038MA','B01001_038EA','B01001_039MA','B01001_039EA','B01001_040MA','B01001_040EA','B01001_041EA','B01001_041MA','B01001_042MA','B01001_042EA','B01001_043MA','B01001_043EA','B01001_044MA','B01001_044EA','B01001_045MA','B01001_045EA','B01001_046MA','B01001_046EA','B01001_047MA','B01001_047EA','B01001_048MA','B01001_048EA','B01001_049MA','B01001_049EA']]
+Big_variables = [['B01001_001E','B01001_001M','B01001_002E','B01001_002M','B01001_003E','B01001_003M','B01001_004E','B01001_004M','B01001_005E','B01001_005M','B01001_006E','B01001_006M','B01001_007E','B01001_007M','B01001_008E','B01001_008M','B01001_009E','B01001_009M','B01001_010E','B01001_010M','B01001_011E','B01001_011M','B01001_012E','B01001_012M','B01001_013E'],['B01001_013M','B01001_014E','B01001_014M','B01001_015E','B01001_015M','B01001_016E','B01001_016M','B01001_017E','B01001_017M','B01001_018E','B01001_018M','B01001_019E','B01001_019M','B01001_020E','B01001_020M','B01001_021E','B01001_021M','B01001_022E','B01001_022M','B01001_023E','B01001_023M','B01001_024E','B01001_024M','B01001_025E','B01001_025M'],['B01001_026E','B01001_026M','B01001_027E','B01001_027M','B01001_028E','B01001_028M','B01001_029E','B01001_029M','B01001_030E','B01001_030M','B01001_031E','B01001_031M','B01001_032E','B01001_032M','B01001_033E','B01001_033M','B01001_034E','B01001_034M','B01001_035E','B01001_035M','B01001_036E','B01001_036M','B01001_037E','B01001_037M','B01001_038E'],['B01001_038M','B01001_039E','B01001_039M','B01001_040E','B01001_040M','B01001_041E','B01001_041M','B01001_042E','B01001_042M','B01001_043E','B01001_043M','B01001_044E','B01001_044M','B01001_045E','B01001_045M','B01001_046E','B01001_046M','B01001_047E','B01001_047M','B01001_048E','B01001_048M','B01001_049E','B01001_049M','B01001_001MA','B01001_001EA'],['B01001_002EA','B01001_002MA','B01001_003MA','B01001_003EA','B01001_004MA','B01001_004EA','B01001_005MA','B01001_005EA','B01001_006MA','B01001_006EA','B01001_007EA','B01001_007MA','B01001_008EA','B01001_008MA','B01001_009MA','B01001_009EA','B01001_010MA','B01001_010EA','B01001_011EA','B01001_011MA','B01001_012MA','B01001_012EA','B01001_013MA','B01001_013EA','B01001_014MA'],['B01001_014EA','B01001_015EA','B01001_015MA','B01001_016MA','B01001_016EA','B01001_017MA','B01001_017EA','B01001_018MA','B01001_018EA','B01001_019MA','B01001_019EA','B01001_020MA','B01001_020EA','B01001_021MA','B01001_021EA','B01001_022MA','B01001_022EA','B01001_023MA','B01001_023EA','B01001_024EA','B01001_024MA','B01001_025EA','B01001_025MA','B01001_026MA','B01001_026EA'],['B01001_027MA','B01001_027EA','B01001_028MA','B01001_028EA','B01001_029MA','B01001_029EA','B01001_030MA','B01001_030EA','B01001_031EA','B01001_031MA','B01001_032EA','B01001_032MA','B01001_033MA','B01001_033EA','B01001_034MA','B01001_034EA','B01001_035EA','B01001_035MA','B01001_036EA','B01001_036MA','B01001_037MA','B01001_037EA','B01001_038MA','B01001_038EA','B01001_039MA'],['B01001_039EA','B01001_040MA','B01001_040EA','B01001_041EA','B01001_041MA','B01001_042MA','B01001_042EA','B01001_043MA','B01001_043EA','B01001_044MA','B01001_044EA','B01001_045MA','B01001_045EA','B01001_046MA','B01001_046EA','B01001_047MA','B01001_047EA','B01001_048MA','B01001_048EA','B01001_049MA','B01001_049EA']]
+Texas_variables = []
+All_States = ['01','02','04','05','08','09','10','11','13','15','16','17','18','19','20','21','22','23','24','25','26','27','28','29','30','31','32','33','34','35','36','37','38','39','40','41','42','44','45','46','47','49','50','51','53','54','55','56','72']
+Big_State_complete = ['06','12']
+Texas = ['48']
+
+
+arcpy.AddMessage('Grabbing data from API...')
+##creating empty dataframes to append the respective Geography's API results to
+
+#if you do not append an API key to the end of the URL, you will be limited to 500 requests per day. An api key is free and can be requsted by providing your emial
+#address to the Census Bureau API website
+key = "88addaa28bbb2f5f7db63dca01c31f19da9b4c47" #if using a key, your API key goes here
+#iterating through all of the state FIPS codes for our region and adding that to the API URL
+
+for state in Texas:
+    arcpy.AddMessage('Getting ACS data for State ' + state)
+    Folder_path = 'M:/08_Geography/GEO/ArcProjects/Directories/Brian/Captsone/Spreadsheets/' + state + '/'
+    TractFolder_path = Folder_path + 'Tract/'
+    BlockFolder_path = Folder_path + 'BlockGroup/'
+    CountyFolder_path = Folder_path + 'County/'
+    StateFolder_path = Folder_path + 'State/'
+    if os.path.exists(Folder_path):
+        pass
+    else:
+        os.mkdir(Folder_path)
+    if os.path.exists(TractFolder_path):
+        pass
+    else:
+        os.mkdir(TractFolder_path)
+        os.mkdir(BlockFolder_path)
+        os.mkdir(CountyFolder_path)
+        os.mkdir(StateFolder_path)
+    for index, v in enumerate(Texas_variables):
+        print(index, v)
+        counter = str(index)
+        beg_url = 'https://api.census.gov/data/2018/acs/acs5?get=NAME,GEO_ID,'
+        tracts_finaldf = pd.DataFrame()
+        counties_finaldf = pd.DataFrame()
+        blockgroup_finaldf = pd.DataFrame()
+        state_finaldf= pd.DataFrame()
+        name = str(v)
+        url = beg_url+name
+        st_end_url = '&for=state:'+state+'&key='+key
+        county_end_url = '&for=county:*&in=state:'+state+'&key='+key
+        st_url = url + st_end_url
+        st_r = requests.get(st_url)
+        st_json = st_r.json()
+        st_df = pd.DataFrame(data= st_json[1:],columns= st_json[0])
+        state_finaldf = state_finaldf.append(st_df)
+        counties = []
+        c_url = url + county_end_url
+        arcpy.AddMessage('Getting ACS Data for State: ' + state + ' counties...')
+        county_r = requests.get(c_url)
+        county_json = county_r.json()
+        c_df = pd.DataFrame(data= county_json[1:],columns= county_json[0])
+        counties_finaldf = counties_finaldf.append(c_df)
+        i = 1
+        while i < len(county_json):
+            CountCode = str(county_json[i][1])
+            CountyCode = CountCode[11:14]
+            counties.append(CountyCode)
+            i+=1
+        for county in counties:
+            arcpy.AddMessage('Getting ACS Data for County: ' + county + ' in State: ' + state + ' tracts...')
+            bg_end_url = '&for=block%20group:*&in=state:'+state+'&in=county:'+county+'&in=tract:*&key='+key
+            tract_end_url = '&for=tract:*&in=state:'+state+'&in=county:*&key='+key
+            t_url = url + tract_end_url
+            rt = requests.get(t_url)
+            tract_json = rt.json()
+            t_df = pd.DataFrame(data= tract_json[1:],columns= tract_json[0])
+            tracts_finaldf= tracts_finaldf.append(t_df)
+            arcpy.AddMessage('Getting ACS Data for County: ' + county + ' in State: ' + state + ' block groups...')
+            b_url = url + bg_end_url
+            rb = requests.get(b_url)
+            bgroup_json = rb.json()
+            b_df = pd.DataFrame(data= bgroup_json[1:],columns= bgroup_json[0])
+            blockgroup_finaldf= blockgroup_finaldf.append(b_df)
+        tracts_finaldf['GEO_ID'] = tracts_finaldf.GEO_ID.str.slice(start=9)
+        Tract_path = TractFolder_path + 'Tract_APIpull_' + name + '.csv'
+        tracts_finaldf.sort_values(by=['GEO_ID'], inplace=True)
+        tracts_finaldf.drop_duplicates(inplace=True)
+        tracts_finaldf.to_csv(Tract_path)
+        counties_finaldf['GEO_ID'] =  counties_finaldf.GEO_ID.str.slice(start=9)
+        County_path = CountyFolder_path + 'County_APIpull_' + name + '.csv'
+        counties_finaldf.sort_values(by=['GEO_ID'], inplace=True)
+        counties_finaldf.to_csv(County_path)
+        blockgroup_finaldf['GEO_ID'] =  blockgroup_finaldf.GEO_ID.str.slice(start=9)
+        Block_path = BlockFolder_path + 'BlockGroup_APIpull_' + name + '.csv'
+        blockgroup_finaldf.sort_values(by=['GEO_ID'], inplace=True)
+        blockgroup_finaldf.to_csv(Block_path)
+        state_finaldf['GEO_ID'] =  state_finaldf.GEO_ID.str.slice(start=9)
+        State_path = StateFolder_path + 'State_APIpull_' + name + '.csv'
+        state_finaldf.sort_values(by=['GEO_ID'], inplace=True)
+        state_finaldf.to_csv(State_path)
+    Folder_path = 'M:/08_Geography/GEO/ArcProjects/Directories/Brian/Captsone/Spreadsheets/' + state + '/'
+    folder_list = ['Tract','BlockGroup','County','State']
+    for f in folder_list:
+        dir = Folder_path + f + '/'
+        maincsv = Folder_path + state + '_' + f + '.csv'
+        os.chdir(dir)
+        df=pd.DataFrame()
+        for files in glob.glob("*.csv"):
+            df = pd.concat([df,pd.read_csv(files).iloc[:,1:]],axis=1)
+        df.to_csv(maincsv)
+        Final_dir = ACSData_path + f + '/'
+        shutil.copy(maincsv,Final_dir)
+arcpy.AddMessage('Data pulled successfully.')
+
+arcpy.AddMessage('Combine all data...')
+ACS_path = 'M:/08_Geography/GEO/ArcProjects/Directories/Brian/Captsone/ACS_Data/'
+Folder_list = ['Tract','BlockGroup','County','State']
+for f in Folder_list:
+    dir = ACS_path + f + '/'
+    for root,dirs,files in os.walk(dir):
+        for filename in files:
+            print(filename)
+
+"""
+
+# Local variables:
+tract_apipull_csv = 'M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/Tract_APIpull.csv'
+County_APIpull_csv = 'M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/County_APIpull.csv'
+Place_APIPull_csv = 'M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/Place_APIpull.csv'
+MCD_APIPull_csv = 'M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/MCD_APIpull.csv'
+CD_APIPull_csv = 'M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/CD_APIpull.csv'
+St_APIPull_csv = 'M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/State_APIpull.csv'
+
+ResponseMapper_gdb = 'M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/ResponseMapper.gdb'
+
+# Set the current workspace
+arcpy.env.workspace = 'M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/ResponseMapper.gdb'
+
+# Check for existence of data before deleting
+if arcpy.Exists("TractResponseRates"):
+    arcpy.Delete_management("TractResponseRates")
+if arcpy.Exists("CountyResponseRates"):
+    arcpy.Delete_management("CountyResponseRates")
+if arcpy.Exists("MCDResponseRates"):
+    arcpy.Delete_management("MCDResponseRates")
+if arcpy.Exists("PlaceResponseRates"):
+    arcpy.Delete_management("PlaceResponseRates")
+if arcpy.Exists("CDResponseRates"):
+    arcpy.Delete_management("CDResponseRates")
+if arcpy.Exists("StateResponseRates"):
+    arcpy.Delete_management("StateResponseRates")
+
+# Process: Table to Table
+arcpy.TableToTable_conversion(tract_apipull_csv, ResponseMapper_gdb, "TractResponseRates", "", "Field1 \"Field1\" true true false 4 Long 0 0 ,First,#,M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/Tract_APIpull.csv,Field1,-1,-1;GEO_ID \"GEO_ID\" true true false 12 Text 0 0 ,First,#,M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/Tract_APIpull.csv,GEO_ID,-1,-1;CRRALL \"CRRALL\" true true false 8 Double 0 0 ,First,#,M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/Tract_APIpull.csv,CRRALL,-1,-1;CRRINT \"CRRINT\" true true false 8 Double 0 0 ,First,#,M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/Tract_APIpull.csv,CRRINT,-1,-1;state \"state\" true true false 2 Text 0 0 ,First,#,M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/Tract_APIpull.csv,state,-1,-1;county \"county\" true true false 3 Text 0 0 ,First,#,M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/Tract_APIpull.csv,,county,-1,-1;tract \"tract\" true true false 8 Text 0 0 ,First,#,M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/Tract_APIpull.csv,tract,-1,-1", "")
+arcpy.TableToTable_conversion(County_APIpull_csv, ResponseMapper_gdb, "CountyResponseRates", "", "Field1 \"Field1\" true true false 4 Long 0 0 ,First,#,M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/County_APIpull.csv,Field1,-1,-1;GEO_ID \"GEO_ID\" true true false 6 Text 0 0 ,First,#,M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/County_APIpull.csv,GEO_ID,-1,-1;CRRALL \"CRRALL\" true true false 8 Double 0 0 ,First,#,M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/County_APIpull.csv,CRRALL,-1,-1;CRRINT \"CRRINT\" true true false 8 Double 0 0 ,First,#,M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/County_APIpull.csv,CRRINT,-1,-1;state \"state\" true true false 2 Text 0 0 ,First,#,M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/County_APIpull.csv,state,-1,-1;county \"county\" true true false 3 Text 0 0 ,First,#,M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/County_APIpull.csv,county,-1,-1", "")
+arcpy.TableToTable_conversion(MCD_APIPull_csv, ResponseMapper_gdb, "MCDResponseRates", "", "Field1 \"Field1\" true true false 4 Long 0 0 ,First,#,M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/MCD_APIpull.csv,Field1,-1,-1;GEO_ID \"GEO_ID\" true true false 10 Text 0 0 ,First,#,M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/MCD_APIpull.csv,GEO_ID,-1,-1;CRRALL \"CRRALL\" true true false 4 Long 0 0 ,First,#,M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/MCD_APIpull.csv,CRRALL,-1,-1;CRRINT \"CRRINT\" true true false 4 Long 0 0 ,First,#,M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/MCD_APIpull.csv,CRRINT,-1,-1;state \"state\" true true false 3 Text 0 0 ,First,#,M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/MCD_APIpull.csv,state,-1,-1;county \"county\" true true false 3 Text 0 0 ,First,#,M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/MCD_APIpull.csv,county,-1,-1;county_subdivision \"county subdivision\" true true false 10 Text 0 0 ,First,#,M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/MCD_APIpull.csv,county subdivision,-1,-1", "")
+arcpy.TableToTable_conversion(Place_APIPull_csv, ResponseMapper_gdb, "PlaceResponseRates", "", "Field1 \"Field1\" true true false 4 Long 0 0 ,First,#,M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/Place_APIpull.csv,Field1,-1,-1;GEO_ID \"GEO_ID\" true true false 12 Text 0 0 ,First,#,M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/Place_APIpull.csv,GEO_ID,-1,-1;CRRALL \"CRRALL\" true true false 4 Long 0 0 ,First,#,M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/Place_APIpull.csv,CRRALL,-1,-1;CRRINT \"CRRINT\" true true false 4 Long 0 0 ,First,#,M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/Place_APIpull.csv,CRRINT,-1,-1;state \"state\" true true false 4 Text 0 0 ,First,#,M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/Place_APIpull.csv,state,-1,-1;place \"place\" true true false 10 Text 0 0 ,First,#,M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/Place_APIpull.csv,place,-1,-1", "")
+arcpy.TableToTable_conversion(CD_APIPull_csv, ResponseMapper_gdb, "CDResponseRates", "", "Field1 \"Field1\" true true false 4 Long 0 0 ,First,#,M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/CD_APIpull.csv,Field1,-1,-1;GEO_ID \"GEO_ID\" true true false 6 Text 0 0 ,First,#,M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/CD_APIpull.csv,GEO_ID,-1,-1;CRRALL \"CRRALL\" true true false 8 Double 0 0 ,First,#,M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/CD_APIpull.csv,CRRALL,-1,-1;CRRINT \"CRRINT\" true true false 8 Double 0 0 ,First,#,M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/CD_APIpull.csv,CRRINT,-1,-1;state \"state\" true true false 2 Text 0 0 ,First,#,M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/CD_APIpull.csv,state,-1,-1;congressional_district \"congressional district\" true true false 3 Text 0 0 ,First,#,M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/CD_APIpull.csv,congressional district,-1,-1", "")
+arcpy.TableToTable_conversion(St_APIPull_csv, ResponseMapper_gdb, "StateResponseRates", "", "Field1 \"Field1\" true true false 4 Long 0 0 ,First,#,M:\08_Geography\GEO\SpecialProjects\ResponseRates\ResponseRateMapper\State_APIpull.csv,Field1,-1,-1;GEO_ID \"GEO_ID\" true true false 4 Long 0 0 ,First,#,M:\08_Geography\GEO\SpecialProjects\ResponseRates\ResponseRateMapper\State_APIpull.csv,GEO_ID,-1,-1;CRRALL \"CRRALL\" true true false 8 Double 0 0 ,First,#,M:\08_Geography\GEO\SpecialProjects\ResponseRates\ResponseRateMapper\State_APIpull.csv,CRRALL,-1,-1;CRRINT \"CRRINT\" true true false 8 Double 0 0 ,First,#,M:\08_Geography\GEO\SpecialProjects\ResponseRates\ResponseRateMapper\State_APIpull.csv,CRRINT,-1,-1;state \"state\" true true false 4 Long 0 0 ,First,#,M:\08_Geography\GEO\SpecialProjects\ResponseRates\ResponseRateMapper\State_APIpull.csv,state,-1,-1", "")
+
+tracttable = 'M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/ResponseMapper.gdb/TractResponseRates'
+countytable = 'M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/ResponseMapper.gdb/CountyResponseRates'
+placetable = 'M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/ResponseMapper.gdb/PlaceResponseRates'
+mcdtable = 'M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/ResponseMapper.gdb/MCDResponseRates'
+cdtable =  'M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/ResponseMapper.gdb/CDResponseRates'
+statetable =  'M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/ResponseMapper.gdb/StateResponseRates'
+
+
+arcpy.AddMessage("data imported.")
+arcpy.AddMessage('')
+arcpy.AddMessage('adding leading zeros to GEOID field...')
+
+# add leading zeros to tract GEOID
+with arcpy.da.UpdateCursor(tracttable, "GEO_ID") as cursor:
+    for row in cursor:
+        if len(row[0]) == 10:
+            row[0] = "0"+ row[0]
+        cursor.updateRow(row)
+with arcpy.da.UpdateCursor(countytable, "GEO_ID") as cursor:
+    for row in cursor:
+        if len(row[0]) == 4:
+            row[0] = "0"+ row[0]
+        cursor.updateRow(row)
+with arcpy.da.UpdateCursor(placetable, "GEO_ID") as cursor:
+    for row in cursor:
+        if len(row[0]) == 6:
+            row[0] = "0"+ row[0]
+        cursor.updateRow(row)
+with arcpy.da.UpdateCursor(mcdtable, "GEO_ID") as cursor:
+    for row in cursor:
+        if len(row[0]) == 9:
+            row[0] = "0"+ row[0]
+        cursor.updateRow(row)
+with arcpy.da.UpdateCursor(cdtable, "GEO_ID") as cursor:
+    for row in cursor:
+        if len(row[0]) == 3:
+            row[0] = "0"+ row[0]
+        cursor.updateRow(row)
+
+
+
+arcpy.AddMessage('')
+arcpy.AddMessage('joining data to featureclass...')
+arcpy.MakeFeatureLayer_management('M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/ResponseMapper.gdb//Region_Tracts_Post2020',"Tracts")
+arcpy.MakeTableView_management('M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/ResponseMapper.gdb/TractResponseRates', "TractResponseData")
+arcpy.AddMessage('Tracts done')
+
+arcpy.MakeFeatureLayer_management('M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/ResponseMapper.gdb/Region_Counties',"Counties")
+arcpy.MakeTableView_management('M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/ResponseMapper.gdb/CountyResponseRates', "CountyResponseData")
+arcpy.AddMessage('Counties done')
+
+arcpy.MakeFeatureLayer_management('M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/ResponseMapper.gdb/Region_CouSub',"MuniID")
+arcpy.MakeTableView_management('M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/ResponseMapper.gdb/MCDResponseRates', "MCDResponseData")
+arcpy.AddMessage('Munis done')
+
+arcpy.MakeFeatureLayer_management('M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/ResponseMapper.gdb/Region_IncPl',"IncPlaces")
+arcpy.MakeTableView_management('M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/ResponseMapper.gdb/PlaceResponseRates', "PlaceResponseData")
+arcpy.AddMessage('IncPlaces done')
+
+arcpy.MakeFeatureLayer_management('M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/ResponseMapper.gdb/CongressionalDistricts',"Congress")
+arcpy.MakeTableView_management('M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/ResponseMapper.gdb/CDResponseRates', "CDResponseData")
+arcpy.AddMessage('Congressional done')
+
+arcpy.MakeFeatureLayer_management('M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/ResponseMapper.gdb/Region_States',"States")
+arcpy.MakeTableView_management('M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/ResponseMapper.gdb/StateResponseRates', "StateResponseData")
+arcpy.AddMessage('States done')
+
+
+inlayer = "Tracts"
+in_Field = "GEOID"
+joinTable = "TractResponseData"
+joinField = "GEO_ID"
+
+tractsjoin = arcpy.AddJoin_management (inlayer, in_Field, joinTable, joinField)
+arcpy.AddMessage('tracts joined')
+
+if arcpy.Exists("TractsResponse"):
+    arcpy.Delete_management("TractsResponse")
+    arcpy.AddMessage('TractsResponse deleted')
+
+arcpy.FeatureClassToFeatureClass_conversion(tractsjoin,'M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/ResponseMapper.gdb', "TractsResponse")
+arcpy.AddMessage('TractsResponse created')
+
+arcpy.RemoveJoin_management (inlayer)
+arcpy.AddMessage('remove tracts join done')
+
+inlayer = "Counties"
+in_Field = "GEOID"
+joinTable = "CountyResponseData"
+joinField = "GEO_ID"
+
+countiesjoin = arcpy.AddJoin_management (inlayer, in_Field, joinTable, joinField)
+arcpy.AddMessage('counties joined')
+
+if arcpy.Exists("CountiesResponse"):
+    arcpy.Delete_management("CountiesResponse")
+    arcpy.AddMessage('countiesResponse deleted')
+
+arcpy.FeatureClassToFeatureClass_conversion(countiesjoin,'M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/ResponseMapper.gdb', "CountiesResponse")
+arcpy.AddMessage('countiesResponse created')
+
+arcpy.RemoveJoin_management (inlayer)
+arcpy.AddMessage('remove counties join done')
+
+inlayer = "MuniID"
+in_Field = "GEO_ID"
+joinTable = "MCDResponseData"
+joinField = "GEO_ID"
+
+MCDsjoin = arcpy.AddJoin_management (inlayer, in_Field, joinTable, joinField)
+arcpy.AddMessage('MCD join done')
+
+if arcpy.Exists("MCDsResponse"):
+    arcpy.Delete_management("MCDsResponse")
+    arcpy.AddMessage('mcd delete done')
+
+arcpy.FeatureClassToFeatureClass_conversion(MCDsjoin,'M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/ResponseMapper.gdb', "MCDsResponse")
+arcpy.AddMessage('mcds join created')
+
+arcpy.RemoveJoin_management (inlayer)
+arcpy.AddMessage('remove mcds join done')
+
+inlayer = "IncPlaces"
+in_Field = "GEO_ID"
+joinTable = "PlaceResponseData"
+joinField = "GEO_ID"
+
+IncPlacesjoin = arcpy.AddJoin_management (inlayer, in_Field, joinTable, joinField)
+arcpy.AddMessage('IncPlaces join done')
+
+if arcpy.Exists("IncPlacesResponse"):
+    arcpy.Delete_management("IncPlacesResponse")
+    arcpy.AddMessage('incplace delete done')
+
+arcpy.FeatureClassToFeatureClass_conversion(IncPlacesjoin,'M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/ResponseMapper.gdb', "IncPlacesResponse")
+arcpy.AddMessage('incplace join created')
+
+arcpy.RemoveJoin_management (inlayer)
+arcpy.AddMessage('remove incplace join done')
+
+inlayer = "Congress"
+in_Field = "Congress_2"
+joinTable = "CDResponseData"
+joinField = "GEO_ID"
+
+congressjoin = arcpy.AddJoin_management (inlayer, in_Field, joinTable, joinField)
+arcpy.AddMessage('congress join done')
+
+if arcpy.Exists("CongressionalDistrictsResponse"):
+    arcpy.Delete_management("CongressionalDistrictsResponse")
+    arcpy.AddMessage('congress delete done')
+
+arcpy.FeatureClassToFeatureClass_conversion(congressjoin,'M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/ResponseMapper.gdb', "CongressionalDistrictsResponse")
+arcpy.AddMessage('congress join completed')
+
+arcpy.RemoveJoin_management (inlayer)
+arcpy.AddMessage('remove congress join done')
+
+inlayer = "States"
+in_Field = "ST"
+joinTable = "StateResponseData"
+joinField = "GEO_ID"
+
+statejoin = arcpy.AddJoin_management (inlayer, in_Field, joinTable, joinField)
+arcpy.AddMessage('state join done')
+
+if arcpy.Exists("StatesResponse"):
+    arcpy.Delete_management("StatesResponse")
+    arcpy.AddMessage('state delete done')
+
+arcpy.FeatureClassToFeatureClass_conversion(statejoin,'M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/ResponseMapper.gdb', "StatesResponse")
+arcpy.AddMessage('state join completed')
+
+arcpy.RemoveJoin_management (inlayer)
+arcpy.AddMessage('remove state join done')
+
+arcpy.AddMessage('Feature data updated successfully. ArcMap document updated with new data. CSV data successfully updated. Response rates update complete.')
+
+
+"""
