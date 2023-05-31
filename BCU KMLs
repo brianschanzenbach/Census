@@ -1,0 +1,35 @@
+__author__ = 'schan311'
+import arcpy
+import os
+import os.path
+import shutil
+arcpy.env.overwriteOutput = True
+
+BCUs = []
+src = r"M:/08_Geography/GEO/ArcProjects/Directories/Brian/Shapefiles/BCU_LexingtonPlus.shp"
+BCU_field = 'stcobcu'
+BCU_Layer = "M:/08_Geography/GEO/ArcProjects/Directories/Brian/Layers/BCU_KML.lyr"
+BCU_folder = "M:/00_Area Offices/2357_PHACO_Share/02_Everyone/Maps/BCU Database/bcus/"
+New_folder = "M:/00_Area Offices/2357_PHACO_Share/02_Everyone/Maps/BCU Database/bcus/New/"
+
+arcpy.AddMessage("Begin creating KMLs for all Tracts")
+
+for BCU in BCUs:
+    BCU_name = "{0}".format(BCU)
+    arcpy.AddMessage(BCU_name)
+    BCU_file = BCU_name + ".kmz"
+    BCU_path = BCU_folder + BCU_file
+    check = os.path.exists(BCU_path)
+    if check is True:
+        arcpy.AddMessage(BCU_file + " already exists")
+    else:
+        fld = arcpy.AddFieldDelimiters(src, BCU_field)
+        where ="{0} = '{1}'".format(fld, BCU)
+        arcpy.MakeFeatureLayer_management(src, "BCU" + " " + "{0}".format(BCU),where)
+        arcpy.ApplySymbologyFromLayer_management("BCU" + " " + "{0}".format(BCU), BCU_Layer)
+        kmz = os.path.join(New_folder, "{0}.kmz".format(BCU))
+        arcpy.LayerToKML_conversion("BCU" + " " + "{0}".format(BCU), kmz)
+        arcpy.AddMessage(BCU_name + " KML created")
+        shutil.move(kmz, BCU_folder)
+        arcpy.AddMessage(BCU_name + " has been moved to the BCU folder")
+arcpy.AddMessage("All missing BCU KMLs are complete")
