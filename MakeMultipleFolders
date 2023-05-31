@@ -1,0 +1,17 @@
+import os
+import arcpy
+
+fc_in = r'M:\08_Geography\GEO\ArcProjects\Directories\Brian\Shapefiles\BCU_all.shp'
+fld_County = 'CountyID'
+fld_Tract = 'TractID'
+folder_list = list(set([r[0] for r in arcpy.da.SearchCursor(fc_in, (fld_County))]))
+
+for County in folder_list:
+    fld=arcpy.AddFieldDelimiters(fc_in,fld_County)
+    where ="{0} = '{1}'".format(fld,County)
+    arcpy.MakeFeatureLayer_management(fc_in, "lyr",where)
+    CountyName = "{0}".format(County)
+    tractfolder_list = list(set([r[0] for r in arcpy.da.SearchCursor("lyr", (fld_Tract))]))
+    root_path = "M:/08_Geography/GEO/SpecialProjects/BCU_DB/Counties/" + CountyName
+    for folder in tractfolder_list:
+        os.mkdir(os.path.join(root_path,folder))
