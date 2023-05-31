@@ -1,0 +1,622 @@
+__author__ = 'schan311'
+
+import shutil
+from time import strftime
+
+import os
+
+""" RA Locations Map Move """
+RA_src = 'M:/08_Geography/GEO/Maps/Everyone_Mirror/Recruiting/Peak Ops/PeakOps_RA_Locations/Export/'
+Day = strftime("%B %d, %Y")
+RA_Everyone = 'M:/02_Everyone/GEOGRAPHY/Maps/Recruiting/'
+RA_Mirror = 'M:/08_Geography/GEO/Maps/Everyone_Mirror/Recruiting/Peak Ops/PeakOps_RA_Locations/'
+RA_Archive = 'M:/08_Geography/GEO/Maps/Everyone_Mirror/Recruiting/Peak Ops/PeakOps_RA_Locations/Archive/'
+RA_folder = 'RA Locations Report/'
+Day_folder = 'Day/'
+Current_folder = 'Current/'
+
+WashingtonDC2355 = 'M:/00_Area Offices/2355_PHACO_Share/02_Everyone/Maps/Recruiting/'
+Wilmington2356 = 'M:/00_Area Offices/2356_PHACO_Share/02_Everyone/Maps/Recruiting/'
+Lexington2357 = 'M:/00_Area Offices/2357_PHACO_Share/02_Everyone/Maps/Recruiting/'
+Louisville2358 = 'M:/00_Area Offices/2358_PHACO_Share/02_Everyone/Maps/Recruiting/'
+Hanover2359 = 'M:/00_Area Offices/2359_PHACO_Share/02_Everyone/Maps/Recruiting/'
+Baltimore2360 = 'M:/00_Area Offices/2360_PHACO_Share/02_Everyone/Maps/Recruiting/'
+Hagerstown2361 = 'M:/00_Area Offices/2361_PHACO_Share/02_Everyone/Maps/Recruiting/'
+Towson2362 = 'M:/00_Area Offices/2362_PHACO_Share/02_Everyone/Maps/Recruiting/'
+Akron2363 = 'M:/00_Area Offices/2363_PHACO_Share/02_Everyone/Maps/Recruiting/'
+Mansfield2364 = 'M:/00_Area Offices/2364_PHACO_Share/02_Everyone/Maps/Recruiting/'
+Cincinnati2365 = 'M:/00_Area Offices/2365_PHACO_Share/02_Everyone/Maps/Recruiting/'
+Cleveland2366 = 'M:/00_Area Offices/2366_PHACO_Share/02_Everyone/Maps/Recruiting/'
+Columbus2367 = 'M:/00_Area Offices/2367_PHACO_SHARE/02_Everyone/Maps/Recruiting/'
+Dayton2368 = 'M:/00_Area Offices/2368_PHACO_Share/02_Everyone/Maps/Recruiting/'
+Toledo2369 = 'M:/00_Area Offices/2369_PHACO_Share/02_Everyone/Maps/Recruiting/'
+SouthPoint2370 = 'M:/00_Area Offices/2370_PHACO_Share/02_Everyone/Maps/Recruiting/'
+Allentown2371 = 'M:/00_Area Offices/2371_PHACO_Share/02_Everyone/Maps/Recruiting/'
+Cranberry2372 = 'M:/00_Area Offices/2372_PHACO_SHARE/02_Everyone/MAPS/Recruiting/'
+Harrisburg2373 = 'M:/00_Area Offices/2373_PHACO_SHARE/02_Everyone/MAPS/Recruiting/'
+Norristown2374 = 'M:/00_Area Offices/2374_PHACO_Share/02_Everyone/Maps/Recruiting/'
+PhiladelphiaFranklin2375 = 'M:/00_Area Offices/2375_PHACO_Share/02_Everyone/Maps/Recruiting/'
+PhiladelphiaPenn2376 = 'M:/00_Area Offices/2376_PHACO_Share/02_Everyone/Maps/Recruiting/'
+Pittsburgh2377 = 'M:/00_Area Offices/2377_PHACO_Share/02_Everyone/Maps/Recruiting/'
+Reading2378 = 'M:/00_Area Offices/2378_PHACO_Share/02_Everyone/Maps/Recruiting/'
+StateCollege2379 = 'M:/00_Area Offices/2379_PHACO_Share/02_Everyone/Maps/Recruiting/'
+Knoxville2380 = 'M:/00_Area Offices/2380_PHACO_Share/02_Everyone/Maps/Recruiting/'
+Memphis2381 = 'M:/00_Area Offices/2381_PHACO_Share/02_Everyone/Maps/Recruiting/'
+Nashville2382 = 'M:/00_Area Offices/2382_PHACO_SHARE/02_Everyone/Maps/Recruiting/'
+Shelbyville2383 = 'M:/00_Area Offices/2383_PHACO_SHARE/02_Everyone/MAPS/Recruiting/'
+CrystalCity2384 = 'M:/00_Area Offices/2384_PHACO_Share/02_Everyone/Maps/Recruiting/'
+Fairfax2385 = 'M:/00_Area Offices/2385_PHACO_SHARE/02_Everyone/MAPS/Recruiting/'
+Fredericksburg2386 = 'M:/00_Area Offices/2386_PHACO_Share/02_Everyone/Maps/Recruiting/'
+VirginiaBeach2387 = 'M:/00_Area Offices/2387_PHACO_Share/02_Everyone/Maps/Recruiting/'
+Richmond2388 = 'M:/00_Area Offices/2388_PHACO_Share/02_Everyone/Maps/Recruiting/'
+Roanoke2389 = 'M:/00_Area Offices/2389_PHACO_Share/02_Everyone/Maps/Recruiting/'
+Beckley2390 = 'M:/00_Area Offices/2390_PHACO_SHARE/02_Everyone/MAPS/Recruiting/'
+
+RA_WashingtonDC2355fn = 'Peak_Ops_RA_Zones_Individual_ACO_2355.pdf'
+RA_Wilmington2356fn = 'Peak_Ops_RA_Zones_Individual_ACO_2356.pdf'
+RA_Lexington2357fn = 'Peak_Ops_RA_Zones_Individual_ACO_2357.pdf'
+RA_Louisville2358fn = 'Peak_Ops_RA_Zones_Individual_ACO_2358.pdf'
+RA_Hanover2359fn = 'Peak_Ops_RA_Zones_Individual_ACO_2359.pdf'
+RA_Baltimore2360fn = 'Peak_Ops_RA_Zones_Individual_ACO_2360.pdf'
+RA_Hagerstown2361fn = 'Peak_Ops_RA_Zones_Individual_ACO_2361.pdf'
+RA_Towson2362fn = 'Peak_Ops_RA_Zones_Individual_ACO_2362.pdf'
+RA_Akron2363fn = 'Peak_Ops_RA_Zones_Individual_ACO_2363.pdf'
+RA_Mansfield2364fn = 'Peak_Ops_RA_Zones_Individual_ACO_2364.pdf'
+RA_Cincinnati2365fn = 'Peak_Ops_RA_Zones_Individual_ACO_2365.pdf'
+RA_Cleveland2366fn = 'Peak_Ops_RA_Zones_Individual_ACO_2366.pdf'
+RA_Columbus2367fn = 'Peak_Ops_RA_Zones_Individual_ACO_2367.pdf'
+RA_Dayton2368fn = 'Peak_Ops_RA_Zones_Individual_ACO_2368.pdf'
+RA_Toledo2369fn = 'Peak_Ops_RA_Zones_Individual_ACO_2369.pdf'
+RA_SouthPoint2370fn = 'Peak_Ops_RA_Zones_Individual_ACO_2370.pdf'
+RA_Allentown2371fn = 'Peak_Ops_RA_Zones_Individual_ACO_2371.pdf'
+RA_Cranberry2372fn = 'Peak_Ops_RA_Zones_Individual_ACO_2372.pdf'
+RA_Harrisburg2373fn = 'Peak_Ops_RA_Zones_Individual_ACO_2373.pdf'
+RA_Norristown2374fn = 'Peak_Ops_RA_Zones_Individual_ACO_2374.pdf'
+RA_PhiladelphiaFranklin2375fn = 'Peak_Ops_RA_Zones_Individual_ACO_2375.pdf'
+RA_PhiladelphiaPenn2376fn = 'Peak_Ops_RA_Zones_Individual_ACO_2376.pdf'
+RA_Pittsburgh2377fn = 'Peak_Ops_RA_Zones_Individual_ACO_2377.pdf'
+RA_Reading2378fn = 'Peak_Ops_RA_Zones_Individual_ACO_2378.pdf'
+RA_StateCollege2379fn = 'Peak_Ops_RA_Zones_Individual_ACO_2379.pdf'
+RA_Knoxville2380fn = 'Peak_Ops_RA_Zones_Individual_ACO_2380.pdf'
+RA_Memphis2381fn = 'Peak_Ops_RA_Zones_Individual_ACO_2381.pdf'
+RA_Nashville2382fn = 'Peak_Ops_RA_Zones_Individual_ACO_2382.pdf'
+RA_Shelbyville2383fn = 'Peak_Ops_RA_Zones_Individual_ACO_2383.pdf'
+RA_CrystalCity2384fn = 'Peak_Ops_RA_Zones_Individual_ACO_2384.pdf'
+RA_Fairfax2385fn = 'Peak_Ops_RA_Zones_Individual_ACO_2385.pdf'
+RA_Fredericksburg2386fn = 'Peak_Ops_RA_Zones_Individual_ACO_2386.pdf'
+RA_VirginiaBeach2387fn = 'Peak_Ops_RA_Zones_Individual_ACO_2387.pdf'
+RA_Richmond2388fn = 'Peak_Ops_RA_Zones_Individual_ACO_2388.pdf'
+RA_Roanoke2389fn = 'Peak_Ops_RA_Zones_Individual_ACO_2389.pdf'
+RA_Beckley2390fn = 'Peak_Ops_RA_Zones_Individual_ACO_2390.pdf'
+
+""" PS_RA_Recruiting Progress Map Move """
+Day_PS = strftime("%B %d, %Y")
+Rec_RA_PS_src = 'M:/08_Geography/GEO/Maps/Everyone_Mirror/Recruiting/Peak Ops/PeakOps_Rec_RA_PS_Locations/Export/'
+Rec_RA_PS_archive = 'M:/08_Geography/GEO/Maps/Everyone_Mirror/Recruiting/Peak Ops/PeakOps_Rec_RA_PS_Locations/Archive/'
+Rec_RA_PS_Everyone = "M:/02_Everyone/GEOGRAPHY/Maps/Recruiting/"
+Rec_RA_PS_Mirror = "M:/08_Geography/GEO/Maps/Everyone_Mirror/Recruiting/Peak Ops/PeakOps_Rec_RA_PS_Locations/"
+PSRA_folder = 'Partnership, RA Staff Locations and Recruiting Report/'
+Move_folder = 'Move/'
+Move = Rec_RA_PS_src + Current_folder + Move_folder
+
+BaltimoreLane = 'PeakOpsRec_RA_PS_Locations__Baltimore, Hagerstown, Hanover, Towson.pdf'
+BeckleyLane = 'PeakOpsRec_RA_PS_Locations__Beckley, Roanoke, Richmond, Virginia Beach.pdf'
+ColumbusLane = 'PeakOpsRec_RA_PS_Locations__Columbus, Dayton, Toledo, Mansfield.pdf'
+CranberryLane = 'PeakOpsRec_RA_PS_Locations__Cranberry, Pittsburgh, Akron, Cleveland.pdf'
+FredericksburgLane = 'PeakOpsRec_RA_PS_Locations__Fairfax, Fredericksburg, Crystal City, D.C..pdf'
+HarrisburgLane = 'PeakOpsRec_RA_PS_Locations__Harrisburg, Allentown, Reading, State College.pdf'
+LexingtonLane = 'PeakOpsRec_RA_PS_Locations__Lexington, Louisville, Cincinnati, South Point.pdf'
+PhillyLane = 'PeakOpsRec_RA_PS_Locations__Norristown, Phila-Franklin, Phila-Penn, Wilmington.pdf'
+ShelbyvilleLane = 'PeakOpsRec_RA_PS_Locations__Shelbyville, Nashville, Memphis, Knoxville.pdf'
+
+BaltimoreLane_path = Rec_RA_PS_src + Current_folder + BaltimoreLane
+BeckleyLane_path = Rec_RA_PS_src + Current_folder + BeckleyLane
+ColumbusLane_path = Rec_RA_PS_src + Current_folder + ColumbusLane
+CranberryLane_path = Rec_RA_PS_src + Current_folder + CranberryLane
+FredericksburgLane_path = Rec_RA_PS_src + Current_folder + FredericksburgLane
+HarrisburgLane_path = Rec_RA_PS_src + Current_folder + HarrisburgLane
+LexingtonLane_path = Rec_RA_PS_src + Current_folder + LexingtonLane
+PhillyLane_path = Rec_RA_PS_src + Current_folder + PhillyLane
+ShelbyvilleLane_path = Rec_RA_PS_src + Current_folder + ShelbyvilleLane
+
+
+""" Move to Mirror folder """
+try:
+    shutil.copytree(RA_Mirror + Current_folder, RA_Archive + Day)
+    shutil.rmtree(RA_Mirror + Current_folder)
+    shutil.copytree(RA_src, RA_Mirror + Current_folder)
+except OSError:
+    arcpy.AddMessage("FAIL.. creation of RA Mirror Directory")
+else:
+    arcpy.AddMessage("SUCCESS.. creation of RA Mirror Directory")
+
+""" Move to Everyone folder """
+try:
+    shutil.rmtree(RA_Everyone + RA_folder)
+    shutil.copytree(RA_src, RA_Everyone + RA_folder)
+except OSError:
+    arcpy.AddMessage("FAIL.. creation of RA Everyone Directory")
+else:
+    arcpy.AddMessage("SUCCESS.. creation of RA Everyone Directory")
+
+""" Move to Individual Area Office folders """
+try:
+    shutil.rmtree(WashingtonDC2355 + RA_folder)
+    os.mkdir(RA_src + Current_folder)
+    shutil.move(RA_src + RA_WashingtonDC2355fn, RA_src + Current_folder)
+    shutil.copytree(RA_src + Current_folder, WashingtonDC2355 + RA_folder)
+    shutil.rmtree(RA_src + Current_folder)
+except OSError:
+    arcpy.AddMessage("FAIL.. creation of RA Washington DC 2355 map in ACO Office folder")
+else:
+    arcpy.AddMessage("SUCCESS.. creation of RA Washington DC 2355 map in ACO Office folder")
+try:
+    shutil.rmtree(Wilmington2356 + RA_folder)
+    os.mkdir(RA_src + Current_folder)
+    shutil.move(RA_src + RA_Wilmington2356fn, RA_src + Current_folder)
+    shutil.copytree(RA_src + Current_folder, Wilmington2356 + RA_folder)
+    shutil.rmtree(RA_src + Current_folder)
+except OSError:
+    arcpy.AddMessage("FAIL.. creation of RA Wilmington 2356 map in ACO Office folder")
+else:
+    arcpy.AddMessage("SUCCESS.. creation of RA Wilmington 2356 map in ACO Office folder")
+try:
+    shutil.rmtree(Lexington2357 + RA_folder)
+    os.mkdir(RA_src + Current_folder)
+    shutil.move(RA_src + RA_Lexington2357fn, RA_src + Current_folder)
+    shutil.copytree(RA_src + Current_folder, Lexington2357 + RA_folder)
+    shutil.rmtree(RA_src + Current_folder)
+except OSError:
+    arcpy.AddMessage("FAIL.. creation of RA Lexington 2357 map in ACO Office folder")
+else:
+    arcpy.AddMessage("SUCCESS.. creation of RA Lexington 2357 map in ACO Office folder")
+try:
+    shutil.rmtree(Louisville2358 + RA_folder)
+    os.mkdir(RA_src + Current_folder)
+    shutil.move(RA_src + RA_Louisville2358fn, RA_src + Current_folder)
+    shutil.copytree(RA_src + Current_folder, Louisville2358 + RA_folder)
+    shutil.rmtree(RA_src + Current_folder)
+except OSError:
+    arcpy.AddMessage("FAIL.. creation of RA Louisville 2358 map in ACO Office folder")
+else:
+    arcpy.AddMessage("SUCCESS.. creation of RA Louisville 2358 map in ACO Office folder")
+try:
+    shutil.rmtree(Hanover2359 + RA_folder)
+    os.mkdir(RA_src + Current_folder)
+    shutil.move(RA_src + RA_Hanover2359fn, RA_src + Current_folder)
+    shutil.copytree(RA_src + Current_folder, Hanover2359 + RA_folder)
+    shutil.rmtree(RA_src + Current_folder)
+except OSError:
+    arcpy.AddMessage("FAIL.. creation of RA Hanover 2359 map in ACO Office folder")
+else:
+    arcpy.AddMessage("SUCCESS.. creation of RA Hanover 2359 map in ACO Office folder")
+try:
+    shutil.rmtree(Baltimore2360 + RA_folder)
+    os.mkdir(RA_src + Current_folder)
+    shutil.move(RA_src + RA_Baltimore2360fn, RA_src + Current_folder)
+    shutil.copytree(RA_src + Current_folder, Baltimore2360 + RA_folder)
+    shutil.rmtree(RA_src + Current_folder)
+except OSError:
+    arcpy.AddMessage("FAIL.. creation of RA Baltimore 2360 map in ACO Office folder")
+else:
+    arcpy.AddMessage("SUCCESS.. creation of RA Baltimore 2360 map in ACO Office folder")
+try:
+    shutil.rmtree(Hagerstown2361 + RA_folder)
+    os.mkdir(RA_src + Current_folder)
+    shutil.move(RA_src + RA_Hagerstown2361fn, RA_src + Current_folder)
+    shutil.copytree(RA_src + Current_folder, Hagerstown2361 + RA_folder)
+    shutil.rmtree(RA_src + Current_folder)
+except OSError:
+    arcpy.AddMessage("FAIL.. creation of RA Hagerstown 2361 map in ACO Office folder")
+else:
+    arcpy.AddMessage("SUCCESS.. creation of RA Hagerstown 2361 map in ACO Office folder")
+try:
+    shutil.rmtree(Towson2362 + RA_folder)
+    os.mkdir(RA_src + Current_folder)
+    shutil.move(RA_src + RA_Towson2362fn, RA_src + Current_folder)
+    shutil.copytree(RA_src + Current_folder, Towson2362 + RA_folder)
+    shutil.rmtree(RA_src + Current_folder)
+except OSError:
+    arcpy.AddMessage("FAIL.. creation of RA Towson 2362 map in ACO Office folder")
+else:
+    arcpy.AddMessage("SUCCESS.. creation of RA Towson 2362 map in ACO Office folder")
+try:
+    shutil.rmtree(Akron2363 + RA_folder)
+    os.mkdir(RA_src + Current_folder)
+    shutil.move(RA_src + RA_Akron2363fn, RA_src + Current_folder)
+    shutil.copytree(RA_src + Current_folder, Akron2363 + RA_folder)
+    shutil.rmtree(RA_src + Current_folder)
+except OSError:
+    arcpy.AddMessage("FAIL.. creation of RA Akron 2363 map in ACO Office folder")
+else:
+    arcpy.AddMessage("SUCCESS.. creation of RA Akron 2363 map in ACO Office folder")
+try:
+    shutil.rmtree(Mansfield2364 + RA_folder)
+    os.mkdir(RA_src + Current_folder)
+    shutil.move(RA_src + RA_Mansfield2364fn, RA_src + Current_folder)
+    shutil.copytree(RA_src + Current_folder, Mansfield2364 + RA_folder)
+    shutil.rmtree(RA_src + Current_folder)
+except OSError:
+    arcpy.AddMessage("FAIL.. creation of RA Mansfield 2364 map in ACO Office folder")
+else:
+    arcpy.AddMessage("SUCCESS.. creation of RA Mansfield 2364 map in ACO Office folder")
+try:
+    shutil.rmtree(Cincinnati2365 + RA_folder)
+    os.mkdir(RA_src + Current_folder)
+    shutil.move(RA_src + RA_Cincinnati2365fn, RA_src + Current_folder)
+    shutil.copytree(RA_src + Current_folder, Cincinnati2365 + RA_folder)
+    shutil.rmtree(RA_src + Current_folder)
+except OSError:
+    arcpy.AddMessage("FAIL.. creation of RA Cincinnati 2365 map in ACO Office folder")
+else:
+    arcpy.AddMessage("SUCCESS.. creation of RA Cincinnati 2365 map in ACO Office folder")
+try:
+    shutil.rmtree(Cleveland2366 + RA_folder)
+    os.mkdir(RA_src + Current_folder)
+    shutil.move(RA_src + RA_Cleveland2366fn, RA_src + Current_folder)
+    shutil.copytree(RA_src + Current_folder, Cleveland2366 + RA_folder)
+    shutil.rmtree(RA_src + Current_folder)
+except OSError:
+    arcpy.AddMessage("FAIL.. creation of RA Cleveland 2366 map in ACO Office folder")
+else:
+    arcpy.AddMessage("SUCCESS.. creation of RA Cleveland 2366 map in ACO Office folder")
+try:
+    shutil.rmtree(Columbus2367 + RA_folder)
+    os.mkdir(RA_src + Current_folder)
+    shutil.move(RA_src + RA_Columbus2367fn, RA_src + Current_folder)
+    shutil.copytree(RA_src + Current_folder, Columbus2367 + RA_folder)
+    shutil.rmtree(RA_src + Current_folder)
+except OSError:
+    arcpy.AddMessage("FAIL.. creation of RA Columbus 2367 map in ACO Office folder")
+else:
+    arcpy.AddMessage("SUCCESS.. creation of RA Columbus 2367 map in ACO Office folder")
+try:
+    shutil.rmtree(Dayton2368 + RA_folder)
+    os.mkdir(RA_src + Current_folder)
+    shutil.move(RA_src + RA_Dayton2368fn, RA_src + Current_folder)
+    shutil.copytree(RA_src + Current_folder, Dayton2368 + RA_folder)
+    shutil.rmtree(RA_src + Current_folder)
+except OSError:
+    arcpy.AddMessage("FAIL.. creation of RA Dayton 2368 map in ACO Office folder")
+else:
+    arcpy.AddMessage("SUCCESS.. creation of RA Dayton 2368 map in ACO Office folder")
+try:
+    shutil.rmtree(Toledo2369 + RA_folder)
+    os.mkdir(RA_src + Current_folder)
+    shutil.move(RA_src + RA_Toledo2369fn, RA_src + Current_folder)
+    shutil.copytree(RA_src + Current_folder, Toledo2369 + RA_folder)
+    shutil.rmtree(RA_src + Current_folder)
+except OSError:
+    arcpy.AddMessage("FAIL.. creation of RA Toledo 2369 map in ACO Office folder")
+else:
+    arcpy.AddMessage("SUCCESS.. creation of RA Toledo 2369 map in ACO Office folder")
+try:
+    shutil.rmtree(SouthPoint2370 + RA_folder)
+    os.mkdir(RA_src + Current_folder)
+    shutil.move(RA_src + RA_SouthPoint2370fn, RA_src + Current_folder)
+    shutil.copytree(RA_src + Current_folder, SouthPoint2370 + RA_folder)
+    shutil.rmtree(RA_src + Current_folder)
+except OSError:
+    arcpy.AddMessage("FAIL.. creation of RA South Point 2370 map in ACO Office folder")
+else:
+    arcpy.AddMessage("SUCCESS.. creation of RA South Point 2370 map in ACO Office folder")
+try:
+    shutil.rmtree(Allentown2371 + RA_folder)
+    os.mkdir(RA_src + Current_folder)
+    shutil.move(RA_src + RA_Allentown2371fn, RA_src + Current_folder)
+    shutil.copytree(RA_src + Current_folder, Allentown2371 + RA_folder)
+    shutil.rmtree(RA_src + Current_folder)
+except OSError:
+    arcpy.AddMessage("FAIL.. creation of RA Allentown 2371 map in ACO Office folder")
+else:
+    arcpy.AddMessage("SUCCESS.. creation of RA Allentown 2371 map in ACO Office folder")
+try:
+    shutil.rmtree(Cranberry2372 + RA_folder)
+    os.mkdir(RA_src + Current_folder)
+    shutil.move(RA_src + RA_Cranberry2372fn, RA_src + Current_folder)
+    shutil.copytree(RA_src + Current_folder, Cranberry2372 + RA_folder)
+    shutil.rmtree(RA_src + Current_folder)
+except OSError:
+    arcpy.AddMessage("FAIL.. creation of RA Cranberry 2372 map in ACO Office folder")
+else:
+    arcpy.AddMessage("SUCCESS.. creation of RA Cranberry 2372 map in ACO Office folder")
+try:
+    shutil.rmtree(Harrisburg2373 + RA_folder)
+    os.mkdir(RA_src + Current_folder)
+    shutil.move(RA_src + RA_Harrisburg2373fn, RA_src + Current_folder)
+    shutil.copytree(RA_src + Current_folder, Harrisburg2373 + RA_folder)
+    shutil.rmtree(RA_src + Current_folder)
+except OSError:
+    arcpy.AddMessage("FAIL.. creation of RA Harrisburg 2373 map in ACO Office folder")
+else:
+    arcpy.AddMessage("SUCCESS.. creation of RA Harrisburg 2373 map in ACO Office folder")
+try:
+    shutil.rmtree(Norristown2374 + RA_folder)
+    os.mkdir(RA_src + Current_folder)
+    shutil.move(RA_src + RA_Norristown2374fn, RA_src + Current_folder)
+    shutil.copytree(RA_src + Current_folder, Norristown2374 + RA_folder)
+    shutil.rmtree(RA_src + Current_folder)
+except OSError:
+    arcpy.AddMessage("FAIL.. creation of RA Norristown 2374 map in ACO Office folder")
+else:
+    arcpy.AddMessage("SUCCESS.. creation of RA Norristown 2374 map in ACO Office folder")
+try:
+    shutil.rmtree(PhiladelphiaFranklin2375 + RA_folder)
+    os.mkdir(RA_src + Current_folder)
+    shutil.move(RA_src + RA_PhiladelphiaFranklin2375fn, RA_src + Current_folder)
+    shutil.copytree(RA_src + Current_folder, PhiladelphiaFranklin2375 + RA_folder)
+    shutil.rmtree(RA_src + Current_folder)
+except OSError:
+    arcpy.AddMessage("FAIL.. creation of RA Philly Franklin 2375 map in ACO Office folder")
+else:
+    arcpy.AddMessage("SUCCESS.. creation of RA Philly Franklin 2375 map in ACO Office folder")
+try:
+    shutil.rmtree(PhiladelphiaPenn2376 + RA_folder)
+    os.mkdir(RA_src + Current_folder)
+    shutil.move(RA_src + RA_PhiladelphiaPenn2376fn, RA_src + Current_folder)
+    shutil.copytree(RA_src + Current_folder, PhiladelphiaPenn2376 + RA_folder)
+    shutil.rmtree(RA_src + Current_folder)
+except OSError:
+    arcpy.AddMessage("FAIL.. creation of RA Philly Penn 2376 map in ACO Office folder")
+else:
+    arcpy.AddMessage("SUCCESS.. creation of RA Philly Penn 2376 map in ACO Office folder")
+try:
+    shutil.rmtree(Pittsburgh2377 + RA_folder)
+    os.mkdir(RA_src + Current_folder)
+    shutil.move(RA_src + RA_Pittsburgh2377fn, RA_src + Current_folder)
+    shutil.copytree(RA_src + Current_folder, Pittsburgh2377 + RA_folder)
+    shutil.rmtree(RA_src + Current_folder)
+except OSError:
+    arcpy.AddMessage("FAIL.. creation of RA Pittsburgh 2377 map in ACO Office folder")
+else:
+    arcpy.AddMessage("SUCCESS.. creation of RA Pittsburgh 2377 map in ACO Office folder")
+try:
+    shutil.rmtree(Reading2378 + RA_folder)
+    os.mkdir(RA_src + Current_folder)
+    shutil.move(RA_src + RA_Reading2378fn, RA_src + Current_folder)
+    shutil.copytree(RA_src + Current_folder, Reading2378 + RA_folder)
+    shutil.rmtree(RA_src + Current_folder)
+except OSError:
+    arcpy.AddMessage("FAIL.. creation of RA Reading 2378 map in ACO Office folder")
+else:
+    arcpy.AddMessage("SUCCESS.. creation of RA Reading 2378 map in ACO Office folder")
+try:
+    shutil.rmtree(StateCollege2379 + RA_folder)
+    os.mkdir(RA_src + Current_folder)
+    shutil.move(RA_src + RA_StateCollege2379fn, RA_src + Current_folder)
+    shutil.copytree(RA_src + Current_folder, StateCollege2379 + RA_folder)
+    shutil.rmtree(RA_src + Current_folder)
+except OSError:
+    arcpy.AddMessage("FAIL.. creation of RA State College 2379 map in ACO Office folder")
+else:
+    arcpy.AddMessage("SUCCESS.. creation of RA State College 2379 map in ACO Office folder")
+try:
+    shutil.rmtree(Knoxville2380 + RA_folder)
+    os.mkdir(RA_src + Current_folder)
+    shutil.move(RA_src + RA_Knoxville2380fn, RA_src + Current_folder)
+    shutil.copytree(RA_src + Current_folder, Knoxville2380 + RA_folder)
+    shutil.rmtree(RA_src + Current_folder)
+except OSError:
+    arcpy.AddMessage("FAIL.. creation of RA Knoxville 2380 map in ACO Office folder")
+else:
+    arcpy.AddMessage("SUCCESS.. creation of RA Knoxville 2380 map in ACO Office folder")
+try:
+    shutil.rmtree(Memphis2381 + RA_folder)
+    os.mkdir(RA_src + Current_folder)
+    shutil.move(RA_src + RA_Memphis2381fn, RA_src + Current_folder)
+    shutil.copytree(RA_src + Current_folder, Memphis2381 + RA_folder)
+    shutil.rmtree(RA_src + Current_folder)
+except OSError:
+    arcpy.AddMessage("FAIL.. creation of RA Memphis 2381 map in ACO Office folder")
+else:
+    arcpy.AddMessage("SUCCESS.. creation of RA Memphis 2381 map in ACO Office folder")
+try:
+    shutil.rmtree(Nashville2382 + RA_folder)
+    os.mkdir(RA_src + Current_folder)
+    shutil.move(RA_src + RA_Nashville2382fn, RA_src + Current_folder)
+    shutil.copytree(RA_src + Current_folder, Nashville2382 + RA_folder)
+    shutil.rmtree(RA_src + Current_folder)
+except OSError:
+    arcpy.AddMessage("FAIL.. creation of RA Nashville 2382 map in ACO Office folder")
+else:
+    arcpy.AddMessage("SUCCESS.. creation of RA Nashville 2382 map in ACO Office folder")
+try:
+    shutil.rmtree(Shelbyville2383 + RA_folder)
+    os.mkdir(RA_src + Current_folder)
+    shutil.move(RA_src + RA_Shelbyville2383fn, RA_src + Current_folder)
+    shutil.copytree(RA_src + Current_folder, Shelbyville2383 + RA_folder)
+    shutil.rmtree(RA_src + Current_folder)
+except OSError:
+    arcpy.AddMessage("FAIL.. creation of RA Shelbyville 2383 map in ACO Office folder")
+else:
+    arcpy.AddMessage("SUCCESS.. creation of RA Shelbyville 2383 map in ACO Office folder")
+try:
+    shutil.rmtree(CrystalCity2384 + RA_folder)
+    os.mkdir(RA_src + Current_folder)
+    shutil.move(RA_src + RA_CrystalCity2384fn, RA_src + Current_folder)
+    shutil.copytree(RA_src + Current_folder, CrystalCity2384 + RA_folder)
+    shutil.rmtree(RA_src + Current_folder)
+except OSError:
+    arcpy.AddMessage("FAIL.. creation of RA Crystal City 2384 map in ACO Office folder")
+else:
+    arcpy.AddMessage("SUCCESS.. creation of RA Crystal City 2384 map in ACO Office folder")
+try:
+    shutil.rmtree(Fairfax2385 + RA_folder)
+    os.mkdir(RA_src + Current_folder)
+    shutil.move(RA_src + RA_Fairfax2385fn, RA_src + Current_folder)
+    shutil.copytree(RA_src + Current_folder, Fairfax2385 + RA_folder)
+    shutil.rmtree(RA_src + Current_folder)
+except OSError:
+    arcpy.AddMessage("FAIL.. creation of RA Fairfax 2385 map in ACO Office folder")
+else:
+    arcpy.AddMessage("SUCCESS.. creation of RA Fairfax 2385 map in ACO Office folder")
+try:
+    shutil.rmtree(Fredericksburg2386 + RA_folder)
+    os.mkdir(RA_src + Current_folder)
+    shutil.move(RA_src + RA_Fredericksburg2386fn, RA_src + Current_folder)
+    shutil.copytree(RA_src + Current_folder, Fredericksburg2386 + RA_folder)
+    shutil.rmtree(RA_src + Current_folder)
+except OSError:
+    arcpy.AddMessage("FAIL.. creation of RA Fredericksburg 2386 map in ACO Office folder")
+else:
+    arcpy.AddMessage("SUCCESS.. creation of RA Fredericksburg 2386 map in ACO Office folder")
+try:
+    shutil.rmtree(VirginiaBeach2387 + RA_folder)
+    os.mkdir(RA_src + Current_folder)
+    shutil.move(RA_src + RA_VirginiaBeach2387fn, RA_src + Current_folder)
+    shutil.copytree(RA_src + Current_folder, VirginiaBeach2387 + RA_folder)
+    shutil.rmtree(RA_src + Current_folder)
+except OSError:
+    arcpy.AddMessage("FAIL.. creation of RA Virginia Beach 2387 map in ACO Office folder")
+else:
+    arcpy.AddMessage("SUCCESS.. creation of RA Virginia Beach 2387 map in ACO Office folder")
+try:
+    shutil.rmtree(Richmond2388 + RA_folder)
+    os.mkdir(RA_src + Current_folder)
+    shutil.move(RA_src + RA_Richmond2388fn, RA_src + Current_folder)
+    shutil.copytree(RA_src + Current_folder, Richmond2388 + RA_folder)
+    shutil.rmtree(RA_src + Current_folder)
+except OSError:
+    arcpy.AddMessage("FAIL.. creation of RA Richmond 2388 map in ACO Office folder")
+else:
+    arcpy.AddMessage("SUCCESS.. creation of RA Richmond 2388 map in ACO Office folder")
+try:
+    shutil.rmtree(Roanoke2389 + RA_folder)
+    os.mkdir(RA_src + Current_folder)
+    shutil.move(RA_src + RA_Roanoke2389fn, RA_src + Current_folder)
+    shutil.copytree(RA_src + Current_folder, Roanoke2389 + RA_folder)
+    shutil.rmtree(RA_src + Current_folder)
+except OSError:
+    arcpy.AddMessage("FAIL.. creation of RA Roanoke 2389 map in ACO Office folder")
+else:
+    arcpy.AddMessage("SUCCESS.. creation of RA Roanoke 2389 map in ACO Office folder")
+try:
+    shutil.rmtree(Beckley2390 + RA_folder)
+    os.mkdir(RA_src + Current_folder)
+    shutil.move(RA_src + RA_Beckley2390fn, RA_src + Current_folder)
+    shutil.copytree(RA_src + Current_folder, Beckley2390 + RA_folder)
+    shutil.rmtree(RA_src + Current_folder)
+except OSError:
+    arcpy.AddMessage("FAIL.. creation of RA Beckley 2390 map in ACO Office folder")
+else:
+    arcpy.AddMessage("SUCCESS.. creation of RA Beckley 2390 map in ACO Office folder")
+
+
+
+
+""" PS_RA_Recruiting Progress Map Move """
+
+""" Move to Mirror folder """
+try:
+    shutil.copytree(Rec_RA_PS_Mirror + Current_folder, Rec_RA_PS_archive + Day)
+    shutil.rmtree(Rec_RA_PS_Mirror + Current_folder)
+    shutil.copytree(Rec_RA_PS_src, Rec_RA_PS_Mirror + Current_folder)
+except OSError:
+    arcpy.AddMessage("FAIL.. creation of Rec_RA_PS Mirror Directory")
+else:
+    arcpy.AddMessage("SUCCESS.. creation of Rec_RA_PS Mirror Directory")
+
+""" Move to Everyone folder """
+try:
+    shutil.rmtree(Rec_RA_PS_Everyone + PSRA_folder)
+    shutil.copytree(Rec_RA_PS_src, Rec_RA_PS_Everyone + PSRA_folder)
+except OSError:
+    arcpy.AddMessage("FAIL.. creation of Rec_RA_PS Everyone Directory")
+else:
+    arcpy.AddMessage("SUCCESS.. creation of Rec_RA_PS Everyone Directory")
+
+""" Move to Individual Area Office folders """
+try:
+    shutil.copytree(Rec_RA_PS_src, Rec_RA_PS_src + Current_folder)
+    os.mkdir(Move)
+    shutil.move(BaltimoreLane_path, Move)
+    shutil.rmtree(Baltimore2360 + PSRA_folder)
+    shutil.copytree(Move, Baltimore2360 + PSRA_folder)
+    shutil.rmtree(Move)
+
+    os.mkdir(Move)
+    shutil.move(BeckleyLane_path, Move)
+    shutil.rmtree(Beckley2390 + PSRA_folder)
+    shutil.copytree(Move, Beckley2390 + PSRA_folder)
+    shutil.rmtree(Move)
+
+    os.mkdir(Move)
+    shutil.move(ColumbusLane_path, Move)
+    shutil.rmtree(Columbus2367 + PSRA_folder)
+    shutil.copytree(Move, Columbus2367 + PSRA_folder)
+    shutil.rmtree(Move)
+
+    os.mkdir(Move)
+    shutil.move(CranberryLane_path, Move)
+    shutil.rmtree(Cranberry2372 + PSRA_folder)
+    shutil.copytree(Move, Cranberry2372 + PSRA_folder)
+    shutil.rmtree(Move)
+
+    os.mkdir(Move)
+    shutil.move(FredericksburgLane_path, Move)
+    shutil.rmtree(Fredericksburg2386 + PSRA_folder)
+    shutil.copytree(Move, Fredericksburg2386 + PSRA_folder)
+    shutil.rmtree(Move)
+
+    os.mkdir(Move)
+    shutil.move(HarrisburgLane_path, Move)
+    shutil.rmtree(Harrisburg2373 + PSRA_folder)
+    shutil.copytree(Move, Harrisburg2373 + PSRA_folder)
+    shutil.rmtree(Move)
+
+    os.mkdir(Move)
+    shutil.move(LexingtonLane_path, Move)
+    shutil.rmtree(Lexington2357 + PSRA_folder)
+    shutil.copytree(Move, Lexington2357 + PSRA_folder)
+    shutil.rmtree(Move)
+
+    os.mkdir(Move)
+    shutil.move(PhillyLane_path, Move)
+    shutil.rmtree(Norristown2374 + PSRA_folder)
+    shutil.copytree(Move, Norristown2374 + PSRA_folder)
+    shutil.rmtree(Move)
+
+    os.mkdir(Move)
+    shutil.move(ShelbyvilleLane_path, Move)
+    shutil.rmtree(Shelbyville2383 + PSRA_folder)
+    shutil.copytree(Move, Shelbyville2383 + PSRA_folder)
+    shutil.rmtree(Rec_RA_PS_src + Current_folder)
+except OSError:
+    arcpy.AddMessage("FAIL.. creation of Rec_RA_PS first set of maps in ACO Office folder")
+else:
+    arcpy.AddMessage("SUCCESS.. creation of Rec_RA_PS first set of maps in ACO Office folder")
+try:
+    shutil.copytree(Rec_RA_PS_src, Rec_RA_PS_src + Current_folder)
+    os.mkdir(Move)
+    shutil.move(BaltimoreLane_path, Move)
+    shutil.rmtree(Hagerstown2361 + PSRA_folder)
+    shutil.copytree(Move, Hagerstown2361 + PSRA_folder)
+    shutil.rmtree(Move)
+
+    os.mkdir(Move)
+    shutil.move(BeckleyLane_path, Move)
+    shutil.rmtree(Roanoke2389 + PSRA_folder)
+    shutil.copytree(Move, Roanoke2389 + PSRA_folder)
+    shutil.rmtree(Move)
+
+    os.mkdir(Move)
+    shutil.move(ColumbusLane_path, Move)
+    shutil.rmtree(Dayton2368 + PSRA_folder)
+    shutil.copytree(Move, Dayton2368 + PSRA_folder)
+    shutil.rmtree(Move)
+
+    os.mkdir(Move)
+    shutil.move(CranberryLane_path, Move)
+    shutil.rmtree(Pittsburgh2377 + PSRA_folder)
+    shutil.copytree(Move, Pittsburgh2377 + PSRA_folder)
+    shutil.rmtree(Move)
+
+    os.mkdir(Move)
+    shutil.move(FredericksburgLane_path, Move)
+    shutil.rmtree(Fairfax2385 + PSRA_folder)
+    shutil.copytree(Move, Fairfax2385 + PSRA_folder)
+    shutil.rmtree(Move)
+
+    os.mkdir(Move)
+    shutil.move(HarrisburgLane_path, Move)
+    shutil.rmtree(Allentown2371 + PSRA_folder)
