@@ -1,0 +1,30 @@
+__author__ = 'schan311'
+
+import arcpy
+import os
+import os.path
+import shutil
+
+srcpath = 'M:/08_Geography/GEO/SpecialProjects/BCU_DB/Lanes/'
+dst = 'M:/08_Geography/GEO/SpecialProjects/BCU_DB/Lane_New/'
+dst_practice = 'M:/08_Geography/GEO/SpecialProjects/BCU_DB/practice/'
+dst_duplicate = 'M:/08_Geography/GEO/SpecialProjects/BCU_DB/Duplicates/'
+
+for county in os.listdir(srcpath):
+    county_src = os.path.join(srcpath, county)
+    county_dir = os.listdir(county_src)
+    arcpy.AddMessage(county)
+    for tract in county_dir:
+        #arcpy.AddMessage(tract)
+        tract_src = os.path.join(county_src, tract)
+        tract_dir = os.listdir(tract_src)
+        #arcpy.AddMessage(tract_dir)
+        for file in tract_dir:
+            file_src = os.path.join(tract_src,file)
+            #arcpy.AddMessage(file_src)
+            check = os.path.exists(file_src)
+            if check is True:
+                shutil.move(file_src,dst_duplicate)
+            else:
+                shutil.move(file_src,dst)
+    arcpy.AddMessage(county + " move complete")
