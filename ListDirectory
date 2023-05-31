@@ -1,0 +1,54 @@
+__author__ = 'schan311'
+
+import arcpy
+import os
+import os.path
+import shutil
+import pandas as pd
+
+
+
+listoflists = []
+l = []
+thisdir = r"M:\\10_PES\\PFU\\PFU Scanned Complete Interviews"
+
+for root, dirs, files in os.walk(thisdir):
+    for file in files:
+        l.append(os.path.join(root, file))
+
+for path in l:
+    dirname, basename = os.path.split(path)
+    b = str(os.path.splitext(basename)[0])
+    dir = str(dirname) + "\\" + b
+    d = dir[49:]
+    #print(d)
+    lst = d.split("\\")
+    x = len(lst)
+    y = 6 - x
+    #print(x)
+    if y == 0:
+        # lst.append(b)
+  #      print(lst)
+        #print(b)
+        listoflists.append(lst)
+    elif y == 1:
+        lst.insert(-1,None)
+        listoflists.append(lst)
+    elif y == 2:
+        lst.insert(-1,None)
+        lst.insert(-1,None)
+        listoflists.append(lst)
+    else:
+        z = lst[::-1]
+        #print(z)
+        newlst = [None]*y
+        newlst.extend(z)
+ #       print(newlst)
+        #print(b)
+        listoflists.append(newlst)
+
+#mytup = [tuple(x) for x in listoflists]
+#print listoflists
+df = pd.DataFrame(listoflists)
+df.to_excel(thisdir + "\\filelist.xls", header=['Folder 1','Folder 2','Folder 3','Folder 4','Folder 5','File Name'])
+#print(df)
