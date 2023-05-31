@@ -1,0 +1,57 @@
+__author__ = 'schan311'
+
+import pandas as pd
+import csv
+import requests
+import numpy
+import json
+import arcpy
+import os
+import re
+import xlwt
+import shutil
+from time import strftime
+from datetime import datetime, timedelta
+
+arcpy.env.overwriteOutput = True
+
+# Set variables
+ShapesFolder_path = "M:\\08_Geography\\GEO\\ArcProjects\\Directories\\Brian\\Rob_Project\\New1\\"
+Merge_list = []
+itemsperchunk = 2
+
+for file in os.listdir(ShapesFolder_path):
+    if file.endswith(".shp"):
+        #print file
+        file_path = ShapesFolder_path + file
+        Merge_list.append(file_path)
+#print(Merge_list)
+def divide_chunks(Merge_list,itemsperchunk):
+    for i in range(0,len(Merge_list),itemsperchunk):
+        yield Merge_list[i:i+itemsperchunk]
+x = list(divide_chunks(Merge_list,itemsperchunk))
+totalfiles = str(len(x))
+index = 1
+for a in x:
+    number = str(index)
+    output = "M:/08_Geography/GEO/ArcProjects/Directories/Brian/Rob_Project/New2/2020Buffers_wTracts11.shp"
+    check = os.path.exists(output)
+    if check is True:
+        print(number + " already completed. Move on to next merge...")
+    else:
+        print("Begin merge " + number + " of " + totalfiles + "...")
+        arcpy.Merge_management(inputs=a, output=output)
+        print("Merge " + number + " of " + totalfiles + " complete...")
+    index += 1
+"""
+
+
+output_path = "M:\\08_Geography\\GEO\\ArcProjects\\Directories\\Brian\\Rob_Project\\New2\\"
+
+output = output_path + "2020Buffers_wTracts12.shp"
+shape1 = ShapesFolder_path + "2020Buffers_wTracts23.shp"
+shape2 = output_path + "2020Buffers_wTracts10.shp"
+inputs = [shape1,shape2]
+
+arcpy.Merge_management(inputs=inputs, output=output)
+"""
