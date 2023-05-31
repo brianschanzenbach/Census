@@ -1,0 +1,26 @@
+__author__ = 'schan311'
+
+import arcpy
+arcpy.env.overwriteOutput = True
+#
+fc_in = r'M:\08_Geography\GEO\ArcProjects\Directories\Brian\Shapefiles\BCU_all_shell.shp'
+fc_in_DE = r'M:\08_Geography\GEO\ArcProjects\Directories\Brian\Shapefiles\BCU_shell_DE.shp'
+fc_in_DC = r'M:\08_Geography\GEO\ArcProjects\Directories\Brian\Shapefiles\BCU_shell_DC.shp'
+fc_in_KY = r'M:\08_Geography\GEO\ArcProjects\Directories\Brian\Shapefiles\BCU_shell_KY.shp'
+fc_in_MD = r'M:\08_Geography\GEO\ArcProjects\Directories\Brian\Shapefiles\BCU_shell_MD.shp'
+fc_in_OH = r'M:\08_Geography\GEO\ArcProjects\Directories\Brian\Shapefiles\BCU_shell_OH.shp'
+fc_in_PA = r'M:\08_Geography\GEO\ArcProjects\Directories\Brian\Shapefiles\BCU_shell_PA.shp'
+fc_in_TN = r'M:\08_Geography\GEO\ArcProjects\Directories\Brian\Shapefiles\BCU_shell_TN.shp'
+fc_in_VA = r'M:\08_Geography\GEO\ArcProjects\Directories\Brian\Shapefiles\BCU_shell_VA.shp'
+fc_in_WV = r'M:\08_Geography\GEO\ArcProjects\Directories\Brian\Shapefiles\BCU_shell_WV.shp'
+
+fld_County = 'CountyID'
+out_folder=r'M:/08_Geography/GEO/ArcProjects/Directories/Brian/test/CountyShapes_new/'
+#
+lst_counties = list(set([r[0] for r in arcpy.da.SearchCursor(fc_in, (fld_County))]))
+#
+for County in lst_counties:
+    fld=arcpy.AddFieldDelimiters(fc_in,fld_County)
+    where ="{0} = '{1}'".format(fld,County)
+    arcpy.MakeFeatureLayer_management(fc_in, "{0}.shp".format(County), where)
+    arcpy.FeatureClassToShapefile_conversion("{0}.shp".format(County), out_folder)
