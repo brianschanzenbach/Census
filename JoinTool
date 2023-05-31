@@ -1,0 +1,43 @@
+__author__ = 'schan311'
+import pandas as pd
+import csv
+import requests
+import numpy
+import json
+import arcpy
+import os
+import xlwt
+import shutil
+from time import strftime
+from datetime import datetime, timedelta
+
+arcpy.env.overwriteOutput=True
+
+inTable = arcpy.GetParameterAsText(0)
+inTable_sheet = arcpy.GetParameterAsText(1)
+inField = arcpy.GetParameterAsText(2)
+JoinTable = arcpy.GetParameterAsText(3)
+JoinTable_sheet = arcpy.GetParameterAsText(4)
+JoinField = arcpy.GetParameterAsText(5)
+OutputLocation = 'M:/08_Geography/GEO/ArcProjects/Directories/Brian/Spreadsheets/'
+OutputName = 'JoinTable.csv'
+
+if inTable.endswith('.csv'):
+    df1 = pd.read_csv(inTable)
+elif inTable.endswith(('.xls','.xlsx')):
+    df1 = pd.read_excel(inTable, sheetname=inTable_sheet)
+if JoinTable.endswith('.csv'):
+    df2 = pd.read_csv(JoinTable)
+elif JoinTable.endswith(('.xls','.xlsx')):
+    df2 = pd.read_excel(JoinTable, sheetname=JoinTable_sheet)
+arcpy.AddMessage("Joining spreadsheets...")
+df = pd.merge(df1,
+              df2,
+              left_on=inField,
+              right_on=JoinField,
+              how='right')
+arcpy.AddMessage(df)
+arcpy.AddMessage("Spreadsheets joined...")
+arcpy.AddMessage("Saving join as " + OutputName + " located here: " + OutputLocation)
+df.to_csv('M:/08_Geography/GEO/ArcProjects/Directories/Brian/Spreadsheets/JoinTable.csv')
+arcpy.AddMessage("Join Complete...")
