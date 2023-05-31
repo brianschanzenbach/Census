@@ -1,0 +1,33 @@
+__author__ = 'schan311'
+
+import arcpy
+import os
+import os.path
+import shutil
+
+srcpath = 'M:/08_Geography/GEO/SpecialProjects/BCU_DB/Lane_New/'
+dst_practice = 'M:/08_Geography/GEO/SpecialProjects/BCU_DB/practice/'
+lane_dir = os.listdir(srcpath)
+fld_bcu = 'BCU_ID'
+lst_lane = ['Beckley','Columbus','Cranberry','Fairfax','Philadelphia','Shelbyville','Kentucky','Harrisburg','Maryland','NoLane']
+lst_NoBCU = []
+lane = arcpy.GetParameterAsText(0)
+
+lane_name = "BCU_" + lane
+fc_lane = r"M:/08_Geography/GEO/ArcProjects/Directories/Brian/Shapefiles/" + lane_name + ".shp"
+dst = 'M:/08_Geography/GEO/SpecialProjects/BCU_DB/Lanes/' + lane + "/"
+arcpy.AddMessage(fc_lane)
+lst_bcu = list(set([r[0] for r in arcpy.da.SearchCursor(fc_lane,(fld_bcu))]))
+#arcpy.AddMessage(lst_bcu)
+for bcu in lst_bcu:
+    arcpy.AddMessage(bcu + " identified")
+    bcu_file = bcu + ".kmz"
+    BCU_src = os.path.join(srcpath,bcu_file)
+    check = os.path.exists(BCU_src)
+    if check is True:
+        shutil.move(BCU_src,dst)
+        arcpy.AddMessage(bcu + " moved")
+    else:
+        lst_NoBCU.append(bcu)
+arcpy.AddMessage("Lane Completed")
+arcpy.AddMessage(lst_NoBCU)
