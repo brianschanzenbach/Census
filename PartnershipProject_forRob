@@ -1,0 +1,87 @@
+__author__ = 'schan311'
+
+import pandas as pd
+import csv
+import requests
+import numpy
+import json
+import arcpy
+import os
+import re
+import xlwt
+import shutil
+from time import strftime
+from datetime import datetime, timedelta
+
+arcpy.env.overwriteOutput = True
+arcpy.env.workspace = r"M:\08_Geography\GEO\ArcProjects\Directories\Brian\Rob_Project"
+
+# Set variables
+BufferShape = "2020_All_Buffer.shp"
+TractShape = "Tracts_Pop_Density.shp"
+BufferTempLyr = "BufferTempLyr"
+IndBufferTempLyr = "IndBufferTempLyr.shp"
+ClipTempLyr = "ClipTempLyr.shp"
+AllBuffers_path = "M:\\08_Geography\\GEO\\ArcProjects\\Directories\\Brian\\Rob_Project\\Test\\"
+Merge_list = []
+"""
+arcpy.MakeFeatureLayer_management(BufferShape, BufferTempLyr)
+fcSearch = arcpy.SearchCursor(BufferTempLyr, "", "", "Event_ID")
+for fcRow in fcSearch:
+    EventID = str(fcRow.getValue("Event_ID"))
+    print(EventID)
+    ID = EventID[3:]
+    print(ID)
+    IndLayer = ID + '.shp'
+    print(IndLayer)
+    Event_path = AllBuffers_path + IndLayer
+    check = os.path.exists(Event_path)
+    if check is True:
+        arcpy.AddMessage(EventID + " event shapefile already exists")
+    else:
+        arcpy.Select_analysis(BufferTempLyr, IndBufferTempLyr, where_clause='"Event_ID" = ' + "'" + EventID + "'")
+        arcpy.Clip_analysis(TractShape, IndBufferTempLyr, IndLayer)
+        arcpy.AddField_management(IndLayer, field_name="EventID", field_type="TEXT", field_is_nullable="NULLABLE")
+        arcpy.CalculateField_management(IndLayer, field="EventID", expression='"' + EventID + '"', expression_type="VB", code_block="")
+        arcpy.FeatureClassToShapefile_conversion(IndLayer, Output_Folder="Test")
+        arcpy.Delete_management(IndLayer)
+for file in os.listdir(AllBuffers_path):
+    if file.endswith(".shp"):
+        print file
+        file_path = AllBuffers_path + file
+        Merge_list.append(file_path)
+print(Merge_list)
+join = ";".join(Merge_list)
+print(join)
+input = '"' + join + '"'
+print(input)
+arcpy.Merge_management(inputs=input, output="M:/08_Geography/GEO/ArcProjects/Directories/Brian/Rob_Project/Test/test.shp")
+"""
+for file in os.listdir(AllBuffers_path):
+    if file.endswith(".shp"):
+        #print file
+        file_path = AllBuffers_path + file
+        Merge_list.append(file_path)
+#print(Merge_list)
+def divide_chunks(Merge_list,n):
+    for i in range(0,len(Merge_list),n):
+        yield Merge_list[i:i+n]
+n = 200
+x = list(divide_chunks(Merge_list,n))
+totalfiles = str(len(x))
+index = 1
+for a in x:
+    number = str(index)
+    output = "M:/08_Geography/GEO/ArcProjects/Directories/Brian/Rob_Project/New/test" + number + ".shp"
+    check = os.path.exists(output)
+    if check is True:
+        print(number + " already completed. Move on to next merge...")
+    else:
+        print("Begin merge " + number + " of " + totalfiles + "...")
+        arcpy.Merge_management(inputs=a, output=output)
+        print("Merge " + number + " of " + totalfiles + " complete...")
+    index += 1
+#join = ";".join(Merge_list)
+#input = '"' + join + '"'
+#arcpy.Merge_management(inputs=input, output="M:/08_Geography/GEO/ArcProjects/Directories/Brian/Rob_Project/Test/test.shp")
+#print(Merge_list)
