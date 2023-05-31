@@ -1,0 +1,548 @@
+import pandas as pd
+import csv
+import requests
+import numpy
+import json
+import arcpy
+import os
+import xlwt
+import shutil
+from time import strftime
+from datetime import datetime, timedelta
+
+arcpy.env.overwriteOutput=True
+
+
+
+
+
+arcpy.AddMessage('Grabbing data from API...')
+##creating empty dataframes to append the respective Geography's API results to
+tracts_finaldf = pd.DataFrame()
+counties_finaldf = pd.DataFrame()
+MCD_finaldf = pd.DataFrame()
+place_finaldf = pd.DataFrame()
+cd_finaldf = pd.DataFrame()
+st_finaldf= pd.DataFrame()
+
+PHRCC_States = ['10','11','21','24','39','42','47','51','54']
+
+#if you do not append an API key to the end of the URL, you will be limited to 500 requests per day. An api key is free and can be requsted by providing your emial
+#address to the Census Bureau API website
+key = "88addaa28bbb2f5f7db63dca01c31f19da9b4c47" #if using a key, your API key goes here
+
+#iterating through all of the state FIPS codes for our region and adding that to the API URL
+for ST in PHRCC_States:
+    arcpy.AddMessage('Getting data for state ' + ST + ' response rates')
+    st_url = 'https://api.census.gov/data/2020/dec/responserate?get=DRRALL,CRRINT,RESP_DATE,CRRALL,GEO_ID,DRRINT&for=state:'+ST+'&key='+key
+    st_r = requests.get(st_url)
+    st_json = st_r.json()
+    #making a temporary dataframe from the json for each iteration and then appending it to the global dataframe
+    st_df = pd.DataFrame(data= st_json[1:],columns= st_json[0])
+    st_finaldf = st_finaldf.append(st_df)
+
+for state in PHRCC_States:
+    #we cant iterate through a unviersal list of all of the county codes for each state because they are different for each state, and building a list or dictionary would be 
+    #time consuming and unneccsary. We instead are making an API call for each state that will return a json where one column is all of the county
+    #FIPS codes and then we are appending that to the counties list. Then we are iterating through the counties list we built when making
+    #the api calls. We will us this to get tracts, because and the API limits tract results to only calls for each county
+    # go to this link https://api.census.gov/data/2020/dec/responserate/examples.html to see the available API urls and an example of what is returned
+    #for each call.
+
+    counties = []
+    #look up the requests module in python for info on what this section is doing
+    url = 'https://api.census.gov/data/2020/dec/responserate?get=COUNTY&for=county:*&in=state:'+state+'&key='+key
+    r = requests.get(url)
+    result = r.json()
+    i = 1
+    while i < len(result):
+        counties.append(str(result[i][0]))
+        i+=1
+    for county in counties:
+        arcpy.AddMessage('Getting ' + state + ' County: ' + county + ' tracts...')  
+        t_url = 'https://api.census.gov/data/2020/dec/responserate?get=DRRALL,CRRINT,RESP_DATE,CRRALL,GEO_ID,DRRINT&for=tract:*&in=state:'+state+'&in=county:'+county+'&key='+key
+        r = requests.get(t_url)
+        tract_json = r.json()
+        #making a temporary dataframe from the json for each iteration and then appending it to the global dataframe    
+        t_df = pd.DataFrame(data= tract_json[1:],columns= tract_json[0])
+        tracts_finaldf= tracts_finaldf.append(t_df)
+
+    #Puerto Rico (FIPS code 72) does not have congressional districts, MCD or IncPlaces and therefore the API call to that URL would 404
+    if state != '72':
+        arcpy.AddMessage('Getting State:' + state + ' Congressional Districts')
+        cd_url = 'https://api.census.gov/data/2020/dec/responserate?get=DRRALL,CRRINT,RESP_DATE,CRRALL,GEO_ID,DRRINT&for=congressional%20district:*&in=state:'+state+'&key='+key
+        cd_r = requests.get(cd_url)
+        cd_json = cd_r.json()
+        cd_df = pd.DataFrame(data= cd_json[1:],columns= cd_json[0])
+        cd_finaldf = cd_finaldf.append(cd_df)
+        arcpy.AddMessage('Getting State:' + state + ' places...')
+        pl_url = 'https://api.census.gov/data/2020/dec/responserate?get=DRRALL,CRRINT,RESP_DATE,CRRALL,GEO_ID,DRRINT&for=place:*&in=state:'+state+'&key='+key
+        pl_r = requests.get(pl_url)
+        pl_json = pl_r.json()
+        pl_df = pd.DataFrame(data= pl_json[1:],columns= pl_json[0])
+        place_finaldf = place_finaldf.append(pl_df)
+    arcpy.AddMessage('Getting State:' + state + ' counties...')
+    c_url = 'https://api.census.gov/data/2020/dec/responserate?get=DRRALL,CRRINT,RESP_DATE,CRRALL,GEO_ID,DRRINT&for=county:*&in=state:'+state+'&key='+key
+    county_r = requests.get(c_url)
+    county_json = county_r.json()
+    c_df = pd.DataFrame(data= county_json[1:],columns= county_json[0])
+    counties_finaldf = counties_finaldf.append(c_df)
+MCD_States = ['39','42']
+for st in MCD_States:
+        arcpy.AddMessage('Getting State:' + st + ' MCDs...')
+        mcd_url = 'https://api.census.gov/data/2020/dec/responserate?get=DRRALL,CRRINT,RESP_DATE,CRRALL,GEO_ID,DRRINT&for=county%20subdivision:*&in=state:'+st+'&key='+key
+        mcd_r = requests.get(mcd_url)
+        mcd_json = mcd_r.json()
+        mcd_df = pd.DataFrame(data= mcd_json[1:],columns= mcd_json[0])
+        MCD_finaldf = MCD_finaldf.append(mcd_df)
+#The GEOID from the API includes a random string of 9 numbers before the actual geoid, in order to have this
+# join successfully to the shapefile we need to remove these characters
+# we are then exporting to a csv to import into a GDB        
+tracts_finaldf['GEO_ID'] =  tracts_finaldf.GEO_ID.str.slice(start=9)
+tracts_finaldf.to_csv('M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/Tract_APIpull.csv')
+counties_finaldf['GEO_ID'] =  counties_finaldf.GEO_ID.str.slice(start=9)
+counties_finaldf.to_csv('M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/County_APIpull.csv')
+place_finaldf['GEO_ID'] =  place_finaldf.GEO_ID.str.slice(start=9)
+place_finaldf.to_csv('M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/Place_APIpull.csv')
+MCD_finaldf['GEO_ID'] =  MCD_finaldf.GEO_ID.str.slice(start=9)
+MCD_finaldf.to_csv('M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/MCD_APIpull.csv')
+cd_finaldf['GEO_ID'] =  cd_finaldf.GEO_ID.str.slice(start=9)
+cd_finaldf.to_csv('M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/CD_APIpull.csv')
+st_finaldf['GEO_ID'] =  st_finaldf.GEO_ID.str.slice(start=9)
+st_finaldf.to_csv('M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/State_APIpull.csv')
+
+
+#deleting the existing excel doc to create the new one with the new data
+if os.path.exists('M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseData.xls'):
+    os.remove('M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseData.xls')
+
+
+#workbook = xlwt.Workbook()
+#workbook.add_sheet("Sheet")
+#workbook.save('M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseData.xls')
+#writing the dataframes to individual sheets of the excel document. This excel document is for easy access of the data by partnerhsip and not
+#going to be used in this code
+with pd.ExcelWriter('M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/ResponseData.xls') as writer:
+    counties_finaldf.to_excel(writer, sheet_name='County')
+    tracts_finaldf.to_excel(writer, sheet_name='Tract')
+    MCD_finaldf.to_excel(writer, sheet_name='MCDs')
+    place_finaldf.to_excel(writer, sheet_name='Place')
+    cd_finaldf.to_excel(writer, sheet_name= 'CD')
+    st_finaldf.to_excel(writer, sheet_name= 'State')
+shutil.copy('M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/ResponseData.xls','M:/08_Geography/GEO/SpecialProjects/ResponseRates/')
+
+arcpy.AddMessage('Data pulled successfully. ')
+arcpy.AddMessage('***********************************')
+arcpy.AddMessage('')
+arcpy.AddMessage('Importing CSV to Geodatabase...')
+
+"""
+
+# Local variables:
+tract_apipull_csv = 'M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/Tract_APIpull.csv'
+County_APIpull_csv = 'M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/County_APIpull.csv'
+Place_APIPull_csv = 'M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/Place_APIpull.csv'
+MCD_APIPull_csv = 'M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/MCD_APIpull.csv'
+CD_APIPull_csv = 'M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/CD_APIpull.csv'
+St_APIPull_csv = 'M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/State_APIpull.csv'
+
+ResponseMapper_gdb = 'M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/ResponseMapper.gdb'
+
+# Set the current workspace
+arcpy.env.workspace = 'M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/ResponseMapper.gdb'
+
+# Check for existence of data before deleting
+if arcpy.Exists("TractResponseRates"):
+    arcpy.Delete_management("TractResponseRates")
+if arcpy.Exists("CountyResponseRates"):
+    arcpy.Delete_management("CountyResponseRates")
+if arcpy.Exists("MCDResponseRates"):
+    arcpy.Delete_management("MCDResponseRates")
+if arcpy.Exists("PlaceResponseRates"):
+    arcpy.Delete_management("PlaceResponseRates")
+if arcpy.Exists("CDResponseRates"):
+    arcpy.Delete_management("CDResponseRates")
+if arcpy.Exists("StateResponseRates"):
+    arcpy.Delete_management("StateResponseRates")
+
+# Process: Table to Table
+arcpy.TableToTable_conversion(tract_apipull_csv, ResponseMapper_gdb, "TractResponseRates", "", "Field1 \"Field1\" true true false 4 Long 0 0 ,First,#,M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/Tract_APIpull.csv,Field1,-1,-1;GEO_ID \"GEO_ID\" true true false 12 Text 0 0 ,First,#,M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/Tract_APIpull.csv,GEO_ID,-1,-1;CRRALL \"CRRALL\" true true false 8 Double 0 0 ,First,#,M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/Tract_APIpull.csv,CRRALL,-1,-1;CRRINT \"CRRINT\" true true false 8 Double 0 0 ,First,#,M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/Tract_APIpull.csv,CRRINT,-1,-1;state \"state\" true true false 2 Text 0 0 ,First,#,M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/Tract_APIpull.csv,state,-1,-1;county \"county\" true true false 3 Text 0 0 ,First,#,M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/Tract_APIpull.csv,,county,-1,-1;tract \"tract\" true true false 8 Text 0 0 ,First,#,M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/Tract_APIpull.csv,tract,-1,-1", "")
+arcpy.TableToTable_conversion(County_APIpull_csv, ResponseMapper_gdb, "CountyResponseRates", "", "Field1 \"Field1\" true true false 4 Long 0 0 ,First,#,M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/County_APIpull.csv,Field1,-1,-1;GEO_ID \"GEO_ID\" true true false 6 Text 0 0 ,First,#,M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/County_APIpull.csv,GEO_ID,-1,-1;CRRALL \"CRRALL\" true true false 8 Double 0 0 ,First,#,M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/County_APIpull.csv,CRRALL,-1,-1;CRRINT \"CRRINT\" true true false 8 Double 0 0 ,First,#,M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/County_APIpull.csv,CRRINT,-1,-1;state \"state\" true true false 2 Text 0 0 ,First,#,M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/County_APIpull.csv,state,-1,-1;county \"county\" true true false 3 Text 0 0 ,First,#,M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/County_APIpull.csv,county,-1,-1", "")
+arcpy.TableToTable_conversion(MCD_APIPull_csv, ResponseMapper_gdb, "MCDResponseRates", "", "Field1 \"Field1\" true true false 4 Long 0 0 ,First,#,M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/MCD_APIpull.csv,Field1,-1,-1;GEO_ID \"GEO_ID\" true true false 10 Text 0 0 ,First,#,M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/MCD_APIpull.csv,GEO_ID,-1,-1;CRRALL \"CRRALL\" true true false 4 Long 0 0 ,First,#,M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/MCD_APIpull.csv,CRRALL,-1,-1;CRRINT \"CRRINT\" true true false 4 Long 0 0 ,First,#,M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/MCD_APIpull.csv,CRRINT,-1,-1;state \"state\" true true false 3 Text 0 0 ,First,#,M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/MCD_APIpull.csv,state,-1,-1;county \"county\" true true false 3 Text 0 0 ,First,#,M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/MCD_APIpull.csv,county,-1,-1;county_subdivision \"county subdivision\" true true false 10 Text 0 0 ,First,#,M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/MCD_APIpull.csv,county subdivision,-1,-1", "")
+arcpy.TableToTable_conversion(Place_APIPull_csv, ResponseMapper_gdb, "PlaceResponseRates", "", "Field1 \"Field1\" true true false 4 Long 0 0 ,First,#,M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/Place_APIpull.csv,Field1,-1,-1;GEO_ID \"GEO_ID\" true true false 12 Text 0 0 ,First,#,M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/Place_APIpull.csv,GEO_ID,-1,-1;CRRALL \"CRRALL\" true true false 4 Long 0 0 ,First,#,M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/Place_APIpull.csv,CRRALL,-1,-1;CRRINT \"CRRINT\" true true false 4 Long 0 0 ,First,#,M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/Place_APIpull.csv,CRRINT,-1,-1;state \"state\" true true false 4 Text 0 0 ,First,#,M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/Place_APIpull.csv,state,-1,-1;place \"place\" true true false 10 Text 0 0 ,First,#,M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/Place_APIpull.csv,place,-1,-1", "")
+arcpy.TableToTable_conversion(CD_APIPull_csv, ResponseMapper_gdb, "CDResponseRates", "", "Field1 \"Field1\" true true false 4 Long 0 0 ,First,#,M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/CD_APIpull.csv,Field1,-1,-1;GEO_ID \"GEO_ID\" true true false 6 Text 0 0 ,First,#,M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/CD_APIpull.csv,GEO_ID,-1,-1;CRRALL \"CRRALL\" true true false 8 Double 0 0 ,First,#,M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/CD_APIpull.csv,CRRALL,-1,-1;CRRINT \"CRRINT\" true true false 8 Double 0 0 ,First,#,M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/CD_APIpull.csv,CRRINT,-1,-1;state \"state\" true true false 2 Text 0 0 ,First,#,M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/CD_APIpull.csv,state,-1,-1;congressional_district \"congressional district\" true true false 3 Text 0 0 ,First,#,M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/CD_APIpull.csv,congressional district,-1,-1", "")
+arcpy.TableToTable_conversion(St_APIPull_csv, ResponseMapper_gdb, "StateResponseRates", "", "Field1 \"Field1\" true true false 4 Long 0 0 ,First,#,M:\08_Geography\GEO\SpecialProjects\ResponseRates\ResponseRateMapper\State_APIpull.csv,Field1,-1,-1;GEO_ID \"GEO_ID\" true true false 4 Long 0 0 ,First,#,M:\08_Geography\GEO\SpecialProjects\ResponseRates\ResponseRateMapper\State_APIpull.csv,GEO_ID,-1,-1;CRRALL \"CRRALL\" true true false 8 Double 0 0 ,First,#,M:\08_Geography\GEO\SpecialProjects\ResponseRates\ResponseRateMapper\State_APIpull.csv,CRRALL,-1,-1;CRRINT \"CRRINT\" true true false 8 Double 0 0 ,First,#,M:\08_Geography\GEO\SpecialProjects\ResponseRates\ResponseRateMapper\State_APIpull.csv,CRRINT,-1,-1;state \"state\" true true false 4 Long 0 0 ,First,#,M:\08_Geography\GEO\SpecialProjects\ResponseRates\ResponseRateMapper\State_APIpull.csv,state,-1,-1", "")
+
+tracttable = 'M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/ResponseMapper.gdb/TractResponseRates'
+countytable = 'M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/ResponseMapper.gdb/CountyResponseRates'
+placetable = 'M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/ResponseMapper.gdb/PlaceResponseRates'
+mcdtable = 'M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/ResponseMapper.gdb/MCDResponseRates'
+cdtable =  'M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/ResponseMapper.gdb/CDResponseRates'
+statetable =  'M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/ResponseMapper.gdb/StateResponseRates'
+
+
+arcpy.AddMessage("data imported.")
+arcpy.AddMessage('')
+arcpy.AddMessage('adding leading zeros to GEOID field...')
+
+# add leading zeros to tract GEOID
+with arcpy.da.UpdateCursor(tracttable, "GEO_ID") as cursor:
+    for row in cursor:
+        if len(row[0]) == 10:
+            row[0] = "0"+ row[0]
+        cursor.updateRow(row)
+with arcpy.da.UpdateCursor(countytable, "GEO_ID") as cursor:
+    for row in cursor:
+        if len(row[0]) == 4:
+            row[0] = "0"+ row[0]
+        cursor.updateRow(row)
+with arcpy.da.UpdateCursor(placetable, "GEO_ID") as cursor:
+    for row in cursor:
+        if len(row[0]) == 6:
+            row[0] = "0"+ row[0]
+        cursor.updateRow(row)
+with arcpy.da.UpdateCursor(mcdtable, "GEO_ID") as cursor:
+    for row in cursor:
+        if len(row[0]) == 9:
+            row[0] = "0"+ row[0]
+        cursor.updateRow(row)
+with arcpy.da.UpdateCursor(cdtable, "GEO_ID") as cursor:
+    for row in cursor:
+        if len(row[0]) == 3:
+            row[0] = "0"+ row[0]
+        cursor.updateRow(row)
+
+
+
+arcpy.AddMessage('')
+arcpy.AddMessage('joining data to featureclass...')
+arcpy.MakeFeatureLayer_management('M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/ResponseMapper.gdb//Region_Tracts_Post2020',"Tracts")
+arcpy.MakeTableView_management('M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/ResponseMapper.gdb/TractResponseRates', "TractResponseData")
+arcpy.AddMessage('Tracts done')
+
+arcpy.MakeFeatureLayer_management('M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/ResponseMapper.gdb/Region_Counties',"Counties")
+arcpy.MakeTableView_management('M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/ResponseMapper.gdb/CountyResponseRates', "CountyResponseData")
+arcpy.AddMessage('Counties done')
+
+arcpy.MakeFeatureLayer_management('M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/ResponseMapper.gdb/Region_CouSub',"MuniID")
+arcpy.MakeTableView_management('M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/ResponseMapper.gdb/MCDResponseRates', "MCDResponseData")
+arcpy.AddMessage('Munis done')
+
+arcpy.MakeFeatureLayer_management('M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/ResponseMapper.gdb/Region_IncPl',"IncPlaces")
+arcpy.MakeTableView_management('M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/ResponseMapper.gdb/PlaceResponseRates', "PlaceResponseData")
+arcpy.AddMessage('IncPlaces done')
+
+arcpy.MakeFeatureLayer_management('M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/ResponseMapper.gdb/CongressionalDistricts',"Congress")
+arcpy.MakeTableView_management('M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/ResponseMapper.gdb/CDResponseRates', "CDResponseData")
+arcpy.AddMessage('Congressional done')
+
+arcpy.MakeFeatureLayer_management('M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/ResponseMapper.gdb/Region_States',"States")
+arcpy.MakeTableView_management('M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/ResponseMapper.gdb/StateResponseRates', "StateResponseData")
+arcpy.AddMessage('States done')
+
+
+inlayer = "Tracts"
+in_Field = "GEOID"
+joinTable = "TractResponseData"
+joinField = "GEO_ID"
+
+tractsjoin = arcpy.AddJoin_management (inlayer, in_Field, joinTable, joinField)
+arcpy.AddMessage('tracts joined')
+
+if arcpy.Exists("TractsResponse"):
+    arcpy.Delete_management("TractsResponse")
+    arcpy.AddMessage('TractsResponse deleted')
+
+arcpy.FeatureClassToFeatureClass_conversion(tractsjoin,'M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/ResponseMapper.gdb', "TractsResponse")
+arcpy.AddMessage('TractsResponse created')
+
+arcpy.RemoveJoin_management (inlayer)
+arcpy.AddMessage('remove tracts join done')
+
+inlayer = "Counties"
+in_Field = "GEOID"
+joinTable = "CountyResponseData"
+joinField = "GEO_ID"
+
+countiesjoin = arcpy.AddJoin_management (inlayer, in_Field, joinTable, joinField)
+arcpy.AddMessage('counties joined')
+
+if arcpy.Exists("CountiesResponse"):
+    arcpy.Delete_management("CountiesResponse")
+    arcpy.AddMessage('countiesResponse deleted')
+
+arcpy.FeatureClassToFeatureClass_conversion(countiesjoin,'M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/ResponseMapper.gdb', "CountiesResponse")
+arcpy.AddMessage('countiesResponse created')
+
+arcpy.RemoveJoin_management (inlayer)
+arcpy.AddMessage('remove counties join done')
+
+inlayer = "MuniID"
+in_Field = "GEO_ID"
+joinTable = "MCDResponseData"
+joinField = "GEO_ID"
+
+MCDsjoin = arcpy.AddJoin_management (inlayer, in_Field, joinTable, joinField)
+arcpy.AddMessage('MCD join done')
+
+if arcpy.Exists("MCDsResponse"):
+    arcpy.Delete_management("MCDsResponse")
+    arcpy.AddMessage('mcd delete done')
+
+arcpy.FeatureClassToFeatureClass_conversion(MCDsjoin,'M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/ResponseMapper.gdb', "MCDsResponse")
+arcpy.AddMessage('mcds join created')
+
+arcpy.RemoveJoin_management (inlayer)
+arcpy.AddMessage('remove mcds join done')
+
+inlayer = "IncPlaces"
+in_Field = "GEO_ID"
+joinTable = "PlaceResponseData"
+joinField = "GEO_ID"
+
+IncPlacesjoin = arcpy.AddJoin_management (inlayer, in_Field, joinTable, joinField)
+arcpy.AddMessage('IncPlaces join done')
+
+if arcpy.Exists("IncPlacesResponse"):
+    arcpy.Delete_management("IncPlacesResponse")
+    arcpy.AddMessage('incplace delete done')
+
+arcpy.FeatureClassToFeatureClass_conversion(IncPlacesjoin,'M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/ResponseMapper.gdb', "IncPlacesResponse")
+arcpy.AddMessage('incplace join created')
+
+arcpy.RemoveJoin_management (inlayer)
+arcpy.AddMessage('remove incplace join done')
+
+inlayer = "Congress"
+in_Field = "Congress_2"
+joinTable = "CDResponseData"
+joinField = "GEO_ID"
+
+congressjoin = arcpy.AddJoin_management (inlayer, in_Field, joinTable, joinField)
+arcpy.AddMessage('congress join done')
+
+if arcpy.Exists("CongressionalDistrictsResponse"):
+    arcpy.Delete_management("CongressionalDistrictsResponse")
+    arcpy.AddMessage('congress delete done')
+
+arcpy.FeatureClassToFeatureClass_conversion(congressjoin,'M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/ResponseMapper.gdb', "CongressionalDistrictsResponse")
+arcpy.AddMessage('congress join completed')
+
+arcpy.RemoveJoin_management (inlayer)
+arcpy.AddMessage('remove congress join done')
+
+inlayer = "States"
+in_Field = "ST"
+joinTable = "StateResponseData"
+joinField = "GEO_ID"
+
+statejoin = arcpy.AddJoin_management (inlayer, in_Field, joinTable, joinField)
+arcpy.AddMessage('state join done')
+
+if arcpy.Exists("StatesResponse"):
+    arcpy.Delete_management("StatesResponse")
+    arcpy.AddMessage('state delete done')
+
+arcpy.FeatureClassToFeatureClass_conversion(statejoin,'M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/ResponseMapper.gdb', "StatesResponse")
+arcpy.AddMessage('state join completed')
+
+arcpy.RemoveJoin_management (inlayer)
+arcpy.AddMessage('remove state join done')
+
+arcpy.AddMessage('Feature data updated successfully. ArcMap document updated with new data. CSV data successfully updated. Response rates update complete.')
+
+
+
+df_acorr = pd.read_excel('M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/ResponseUpdate.xls', sheetname='ACO')
+list_acorr = df_acorr.columns.tolist()
+df_tractrr = pd.read_excel('M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/ResponseUpdate.xls', sheetname='Tract')
+df_planningtractrr = pd.read_excel('M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/ResponseUpdate.xls', sheetname='PlanningTracts')
+list_tractrr = df_tractrr.columns.tolist()
+df_countyrr = pd.read_excel('M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/ResponseUpdate.xls', sheetname='County')
+list_countyrr = df_countyrr.columns.tolist()
+df_staterr = pd.read_excel('M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/ResponseUpdate.xls', sheetname='State')
+list_staterr = df_staterr.columns.tolist()
+df_tract_new = pd.read_excel('M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseData.xls', sheetname='Tract')
+df_county_new = pd.read_excel('M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseData.xls', sheetname='County')
+df_state_new = pd.read_excel('M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseData.xls', sheetname='State')
+
+
+df_aco_join = pd.merge(df_tract_new,
+                  df_tractrr,
+                  left_on='GEO_ID',
+                  right_on='GEOID',
+                  how='left')
+df_aco = df_aco_join[['ACO','CRRALL','CRRINT']]
+df_aco = df_aco.groupby(['ACO'],as_index=False).agg({'CRRALL':'mean', 'CRRINT':'mean'})
+df_acofinal = pd.merge(df_acorr,
+                  df_aco,
+                  on='ACO',
+                  how='left')
+df_acofinal['Daily Response Rate'] = df_acofinal['CRRALL'] - df_acofinal['Total Response Rate']
+df_acofinal['Daily Internet Response Rate'] = df_acofinal['CRRINT'] - df_acofinal['Internet Response Rate']
+df_acofinal['Total Response Rate'] = df_acofinal['CRRALL']
+df_acofinal['Internet Response Rate'] = df_acofinal['CRRINT']
+df_acofinal=df_acofinal[list_acorr]
+print(df_acofinal)
+
+
+df_countyfinal = pd.merge(df_countyrr,
+                  df_county_new,
+                  left_on='GEOID',
+                  right_on='GEO_ID',
+                  how='left')
+df_countyfinal['Daily Response Rate'] = df_countyfinal['CRRALL'] - df_countyfinal['Total Response Rate']
+df_countyfinal['Daily Internet Response Rate'] = df_countyfinal['CRRINT'] - df_countyfinal['Internet Response Rate']
+df_countyfinal['Total Response Rate'] = df_countyfinal['CRRALL']
+df_countyfinal['Internet Response Rate'] = df_countyfinal['CRRINT']
+df_countyfinal=df_countyfinal[list_countyrr]
+print(df_countyfinal)
+
+
+df_tractfinal = pd.merge(df_tractrr,
+                  df_tract_new,
+                  left_on='GEOID',
+                  right_on='GEO_ID',
+                  how='left')
+df_tractfinal['Daily Response Rate'] = df_tractfinal['CRRALL'] - df_tractfinal['Total Response Rate']
+df_tractfinal['Daily Internet Response Rate'] = df_tractfinal['CRRINT'] - df_tractfinal['Internet Response Rate']
+df_tractfinal['Total Response Rate'] = df_tractfinal['CRRALL']
+df_tractfinal['Internet Response Rate'] = df_tractfinal['CRRINT']
+df_tractfinal=df_tractfinal[list_tractrr]
+print(df_tractfinal)
+
+
+df_statefinal = pd.merge(df_staterr,
+                  df_state_new,
+                  left_on='State ID',
+                  right_on='GEO_ID',
+                  how='left')
+df_statefinal['Daily Response Rate'] = df_statefinal['CRRALL'] - df_statefinal['Total Response Rate']
+df_statefinal['Daily Internet Response Rate'] = df_statefinal['CRRINT'] - df_statefinal['Internet Response Rate']
+df_statefinal['Total Response Rate'] = df_statefinal['CRRALL']
+df_statefinal['Internet Response Rate'] = df_statefinal['CRRINT']
+df_statefinal=df_statefinal[list_staterr]
+print(df_statefinal)
+
+
+df_planningtractfinal = pd.merge(df_planningtractrr,
+                  df_tract_new,
+                  left_on='GEOID',
+                  right_on='GEO_ID',
+                  how='left')
+df_planningtractfinal['Daily Response Rate'] = df_planningtractfinal['CRRALL'] - df_planningtractfinal['Total Response Rate']
+df_planningtractfinal['Daily Internet Response Rate'] = df_planningtractfinal['CRRINT'] - df_planningtractfinal['Internet Response Rate']
+df_planningtractfinal['Total Response Rate'] = df_planningtractfinal['CRRALL']
+df_planningtractfinal['Internet Response Rate'] = df_planningtractfinal['CRRINT']
+df_planningtractfinal=df_planningtractfinal[list_tractrr]
+print(df_planningtractfinal)
+
+
+
+ACOlist = ['2355', '2356', '2357', '2358', '2359', '2360', '2361', '2362', '2363', '2364', '2365', '2366', '2367', '2368', '2369', '2370', '2371', '2372', '2373', '2374', '2375', '2376', '2377', '2378', '2379', '2380', '2381', '2382', '2383', '2384', '2385', '2386', '2387', '2388', '2389', '2390']
+for ACO in ACOlist:
+    df_final = df_tractfinal.astype(str)
+    print(ACO)
+    df_ACO = df_final.loc[df_final['ACO']==ACO]
+    df_ACO.to_excel(r'M:/08_Geography/GEO/SpecialProjects/ResponseRates/Spreadsheets/Practice/ResponseRate_' + ACO + '.xls', index=False)
+    arcpy.AddMessage("The response rate spreadsheet for ACO " + ACO + " is complete.")
+
+with pd.ExcelWriter('M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseUpdate.xls') as writer:
+    df_acofinal.to_excel(writer, sheet_name='ACO')
+    df_statefinal.to_excel(writer, sheet_name='State')
+    df_countyfinal.to_excel(writer, sheet_name='County')
+    df_tractfinal.to_excel(writer, sheet_name='Tract')
+    df_planningtractfinal.to_excel(writer, sheet_name='PlanningTracts')
+shutil.copy('M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseUpdate.xls','M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/')
+
+
+Day = (datetime.now()-timedelta(1)).strftime("%m%d")
+print(Day)
+
+All_name = "RRate_" + Day
+Internet_name = "IntRate_" + Day
+archive_list = ['OID','GEO_ID']
+archive_list.append(All_name)
+archive_list.append(Internet_name)
+
+TractTimelapse = "M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/ResponseMapper.gdb/TractResponseRateTimelapse"
+CountyTimelapse = "M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/ResponseMapper.gdb/CountyResponseRateTimelapse"
+StateTimelapse = "M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/ResponseMapper.gdb/StateResponseRateTimelapse"
+ACOTimelapse = "M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/ResponseMapper.gdb/ACOResponseRateTimelapse"
+PlanningTractTimelapse = "M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/ResponseMapper.gdb/PlanningTractResponseRateTimelapse"
+ACOUpdate = "M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/ResponseMapper.gdb/ACOUpdate"
+
+
+arcpy.AddMessage("Begin updating Tract Timelapse...")
+arcpy.AddField_management(in_table=TractTimelapse, field_name=All_name, field_type="FLOAT", field_precision="4", field_scale="2", field_length="", field_alias="", field_is_nullable="NULLABLE", field_is_required="NON_REQUIRED", field_domain="")
+arcpy.AddField_management(in_table=TractTimelapse, field_name=Internet_name, field_type="FLOAT", field_precision="4", field_scale="2", field_length="", field_alias="", field_is_nullable="NULLABLE", field_is_required="NON_REQUIRED", field_domain="")
+arcpy.AddMessage("Today's Response Rate fields added...")
+arcpy.JoinField_management(in_data=TractTimelapse, in_field="GEO_ID", join_table="M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/ResponseMapper.gdb/TractsResponse", join_field="TractResponseRates_GEO_ID", fields="TractResponseRates_CRRALL;TractResponseRates_CRRINT")
+arcpy.AddMessage("Today's Response Rate data added to table...")
+arcpy.CalculateField_management(in_table=TractTimelapse, field=All_name, expression="!TractResponseRates_CRRALL!", expression_type="PYTHON", code_block="")
+arcpy.CalculateField_management(in_table=TractTimelapse, field=Internet_name, expression="!TractResponseRates_CRRINT!", expression_type="PYTHON", code_block="")
+arcpy.AddMessage("Today's Response Rate data added to correct fields...")
+arcpy.DeleteField_management(in_table=TractTimelapse, drop_field="TractResponseRates_CRRALL;TractResponseRates_CRRINT")
+arcpy.AddMessage("Excess fields deleted...")
+arcpy.AddMessage("Tract Timelapse updated...")
+
+arcpy.AddMessage("Begin updating County Timelapse...")
+arcpy.AddField_management(in_table=CountyTimelapse, field_name=All_name, field_type="FLOAT", field_precision="4", field_scale="2", field_length="", field_alias="", field_is_nullable="NULLABLE", field_is_required="NON_REQUIRED", field_domain="")
+arcpy.AddField_management(in_table=CountyTimelapse, field_name=Internet_name, field_type="FLOAT", field_precision="4", field_scale="2", field_length="", field_alias="", field_is_nullable="NULLABLE", field_is_required="NON_REQUIRED", field_domain="")
+arcpy.AddMessage("Today's Response Rate fields added...")
+arcpy.JoinField_management(in_data=CountyTimelapse, in_field="GEO_ID", join_table="M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/ResponseMapper.gdb/CountiesResponse", join_field="CountyResponseRates_GEO_ID", fields="CountyResponseRates_CRRALL;CountyResponseRates_CRRINT")
+arcpy.AddMessage("Today's Response Rate data added to table...")
+arcpy.CalculateField_management(in_table=CountyTimelapse, field=All_name, expression="!CountyResponseRates_CRRALL!", expression_type="PYTHON", code_block="")
+arcpy.CalculateField_management(in_table=CountyTimelapse, field=Internet_name, expression="!CountyResponseRates_CRRINT!", expression_type="PYTHON", code_block="")
+arcpy.AddMessage("Today's Response Rate data added to correct fields...")
+arcpy.DeleteField_management(in_table=CountyTimelapse, drop_field="CountyResponseRates_CRRALL;CountyResponseRates_CRRINT")
+arcpy.AddMessage("Excess fields deleted...")
+arcpy.AddMessage("County Timelapse updated...")
+
+arcpy.AddMessage("Begin updating Planning Tract Timelapse...")
+arcpy.AddField_management(in_table=PlanningTractTimelapse, field_name=All_name, field_type="FLOAT", field_precision="4", field_scale="2", field_length="", field_alias="", field_is_nullable="NULLABLE", field_is_required="NON_REQUIRED", field_domain="")
+arcpy.AddField_management(in_table=PlanningTractTimelapse, field_name=Internet_name, field_type="FLOAT", field_precision="4", field_scale="2", field_length="", field_alias="", field_is_nullable="NULLABLE", field_is_required="NON_REQUIRED", field_domain="")
+arcpy.AddMessage("Today's Response Rate fields added...")
+arcpy.JoinField_management(in_data=PlanningTractTimelapse, in_field="GEO_ID", join_table="M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/ResponseMapper.gdb/TractsResponse", join_field="TractResponseRates_GEO_ID", fields="TractResponseRates_CRRALL;TractResponseRates_CRRINT")
+arcpy.AddMessage("Today's Response Rate data added to table...")
+arcpy.CalculateField_management(in_table=PlanningTractTimelapse, field=All_name, expression="!TractResponseRates_CRRALL!", expression_type="PYTHON", code_block="")
+arcpy.CalculateField_management(in_table=PlanningTractTimelapse, field=Internet_name, expression="!TractResponseRates_CRRINT!", expression_type="PYTHON", code_block="")
+arcpy.AddMessage("Today's Response Rate data added to correct fields...")
+arcpy.DeleteField_management(in_table=PlanningTractTimelapse, drop_field="TractResponseRates_CRRALL;TractResponseRates_CRRINT")
+arcpy.AddMessage("Excess fields deleted...")
+arcpy.AddMessage("Planning Tract Timelapse updated...")
+
+arcpy.AddMessage("Begin updating State Timelapse...")
+arcpy.AddField_management(in_table=StateTimelapse, field_name=All_name, field_type="FLOAT", field_precision="4", field_scale="2", field_length="", field_alias="", field_is_nullable="NULLABLE", field_is_required="NON_REQUIRED", field_domain="")
+arcpy.AddField_management(in_table=StateTimelapse, field_name=Internet_name, field_type="FLOAT", field_precision="4", field_scale="2", field_length="", field_alias="", field_is_nullable="NULLABLE", field_is_required="NON_REQUIRED", field_domain="")
+arcpy.AddMessage("Today's Response Rate fields added...")
+arcpy.JoinField_management(in_data=StateTimelapse, in_field="GEO_ID", join_table="M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/ResponseMapper.gdb/StatesResponse", join_field="StateResponseRates_GEO_ID", fields="StateResponseRates_CRRALL;StateResponseRates_CRRINT")
+arcpy.AddMessage("Today's Response Rate data added to table...")
+arcpy.CalculateField_management(in_table=StateTimelapse, field=All_name, expression="!StateResponseRates_CRRALL!", expression_type="PYTHON", code_block="")
+arcpy.CalculateField_management(in_table=StateTimelapse, field=Internet_name, expression="!StateResponseRates_CRRINT!", expression_type="PYTHON", code_block="")
+arcpy.AddMessage("Today's Response Rate data added to correct fields...")
+arcpy.DeleteField_management(in_table=StateTimelapse, drop_field="StateResponseRates_CRRALL;StateResponseRates_CRRINT")
+arcpy.AddMessage("Excess fields deleted...")
+arcpy.AddMessage("State Timelapse updated...")
+
+arcpy.AddMessage("Begin updating ACO Timelapse...")
+if arcpy.Exists(ACOUpdate):
+    arcpy.Delete_management(in_data="M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/ResponseMapper.gdb/ACOUpdate", data_type="Table")
+    arcpy.AddMessage("ACO Update deleted successfully...")
+else:
+    pass
+arcpy.TableToTable_conversion(in_rows="M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/ResponseUpdate.xls/ACO$", out_path="M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/ResponseMapper.gdb", out_name="ACOUpdate", where_clause="", field_mapping='ACO "ACO" true true false 8 Double 6 15 ,First,#,M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/ResponseUpdate.xls/ACO$,ACO,-1,-1;ACO_Name "ACO_Name" true true false 255 Text 0 0 ,First,#,M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/ResponseUpdate.xls/ACO$,ACO Name,-1,-1;Total_Response_Rate "Total_Response_Rate" true true false 8 Double 6 15 ,First,#,M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/ResponseUpdate.xls/ACO$,Total Response Rate,-1,-1;Internet_Response_Rate "Internet_Response_Rate" true true false 8 Double 6 15 ,First,#,M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/ResponseUpdate.xls/ACO$,Internet Response Rate,-1,-1', config_keyword="")
+arcpy.AddMessage("ACO Update created...")
+arcpy.AddField_management(in_table=ACOTimelapse, field_name=All_name, field_type="FLOAT", field_precision="4", field_scale="2", field_length="", field_alias="", field_is_nullable="NULLABLE", field_is_required="NON_REQUIRED", field_domain="")
+arcpy.AddField_management(in_table=ACOTimelapse, field_name=Internet_name, field_type="FLOAT", field_precision="4", field_scale="2", field_length="", field_alias="", field_is_nullable="NULLABLE", field_is_required="NON_REQUIRED", field_domain="")
+arcpy.AddMessage("Today's Response Rate fields added...")
+arcpy.JoinField_management(in_data=ACOTimelapse, in_field="GEO_ID", join_table=ACOUpdate, join_field="ACO", fields="Total_Response_Rate;Internet_Response_Rate")
+arcpy.AddMessage("Today's Response Rate data added to table...")
+arcpy.CalculateField_management(in_table=ACOTimelapse, field=All_name, expression="!Total_Response_Rate!", expression_type="PYTHON", code_block="")
+arcpy.CalculateField_management(in_table=ACOTimelapse, field=Internet_name, expression="!Internet_Response_Rate!", expression_type="PYTHON", code_block="")
+arcpy.AddMessage("Today's Response Rate data added to correct fields...")
+arcpy.DeleteField_management(in_table=ACOTimelapse, drop_field="Total_Response_Rate;Internet_Response_Rate")
+arcpy.AddMessage("Excess fields deleted...")
+arcpy.AddMessage("ACO Timelapse updated...")
+
+"""
