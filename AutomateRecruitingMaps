@@ -1,0 +1,116 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Wed Feb  5 13:12:03 2020
+
+@author: schan311
+"""
+
+import re
+import pandas as pd
+from time import strftime
+
+LastDate = '2020-02-17'
+Day = strftime("%m-%d-%y-%I%M%S%p")
+MasterAppName = 'MasterApplicantList_' + str(Day) + '.xlsx'
+print(MasterAppName)
+
+dfold = pd.read_excel('M:/08_Geography/GEO/SpecialProjects/Recruiting/PeakOpsRecruiting/Data/RALocations/MasterApplicantList.xlsx'
+                               ,sep="\t"
+                               ,usecols=['AppID','AppName','Zip'])
+dfold = dfold.astype('object')
+print(dfold)
+df = pd.read_excel('M:/08_Geography/GEO/SpecialProjects/Recruiting/PeakOpsRecruiting/Data/RALocations/ApplicantsArchive/Applicants.Resolved.xlsx'
+                 ,sep="\t"
+                 #,skiprows=1
+                 ,usecols=['AppID','AppName','Zip'])
+print(df)
+print(df.dtypes)
+dfApplicUpdate = df.append(dfold)
+print(dfApplicUpdate)
+dfApplicUpdate.to_excel('M:/08_Geography/GEO/SpecialProjects/Recruiting/PeakOpsRecruiting/Data/RALocations/MasterApplicantList.xlsx', index=False)
+dfApplicUpdate.to_excel('M:/08_Geography/GEO/SpecialProjects/Recruiting/PeakOpsRecruiting/Data/RALocations/ApplicantsArchive/' + MasterAppName, index=False)
+#print("dfApplicUpdate")
+#print(dfApplicUpdate)
+patternDel = "\D"
+AppIdfilter = dfApplicUpdate['AppID'].str.contains(patternDel, na=False)
+dfApplicUpdate_filtered = dfApplicUpdate[~AppIdfilter]
+AppID_sort = dfApplicUpdate_filtered.sort_values(by=['AppID'])
+#print("AppID_sort")
+#print(AppID_sort)
+AppName_sort = dfApplicUpdate_filtered.sort_values(by=['AppName'])
+#print("AppName_sort")
+#print(AppName_sort)
+Zip_sort = dfApplicUpdate_filtered.sort_values(by=['Zip'])
+patternDel_zip = "\d{5}\s"
+#print("Zip_sort 1")
+#print(Zip_sort)
+Zip_sort = Zip_sort[pd.to_numeric(Zip_sort['Zip'], errors='coerce').notnull()]
+#print("Zip_sort 2")
+#print(Zip_sort)
+Zip_sort = Zip_sort.astype(str)
+#print(Zip_sort.dtypes)
+#print(Zip_sort)
+
+dfHourMile = pd.read_csv('M:/08_Geography/GEO/SpecialProjects/Recruiting/PeakOpsRecruiting/Data/RALocations/ApplicantsArchive/ra_hours_miles.csv'
+                 ,skiprows=12
+                 ,usecols=[0,4,8])
+dfHourMile.columns = ['Name','Hours','Miles']
+dfHourMile = dfHourMile.sort_values(by=['Name'])
+patternDel_Name = "Name"
+patternDel_Total = "Total"
+filt = dfHourMile['Name'].str.contains(patternDel_Name)
+filt1 = dfHourMile['Name'].str.contains(patternDel_Total)
+dfHourMile = dfHourMile[~filt]
+dfHourMile = dfHourMile[~filt1]
+dfHourMile = dfHourMile.dropna()
+print("dfHourMile")
+print(dfHourMile)
+
+dfLastWork = pd.read_csv('M:/08_Geography/GEO/SpecialProjects/Recruiting/PeakOpsRecruiting/Data/RALocations/ApplicantsArchive/last_date_worked.csv'
+                 ,skiprows=1
+                 ,usecols=[0,1,2,3,4]
+                 ,names=['ACO','HRSID','Name','LastDateWorked','Extra'])
+#print("dfLastWork 1")
+#print(dfLastWork)
+dfLastWork = dfLastWork.sort_values(by=['ACO'])
+dfLastWork = dfLastWork.dropna(subset=['ACO'])
+filt = dfLastWork['ACO'].str.isnumeric()
+dfLastWork = dfLastWork[filt]
+dfLastWork = dfLastWork.apply(lambda x: pd.Series(x.dropna().values), axis=1).fillna('')
+dfLastWork.columns = ['ACO','HRSID','Name','LastDateWorked']
+print("dfLastWork")
+#print(dfLastWork)
+dfLastWork = dfLastWork.astype(str)
+#print(dfLastWork.dtypes)
+print(dfLastWork)
+
+df_lastwork_zip = dfLastWork.merge(Zip_sort
+                                   ,left_on='HRSID'
+                                   ,right_on='AppID'
+                                   ,how='inner')
+print("df_lastwork_zip")
+print(df_lastwork_zip)
+df_final = df_lastwork_zip.merge(dfHourMile
+                                 ,on='Name'
+                                 ,how='inner')
+df_final = df_final[['AppID','AppName','ACO','LastDateWorked','Hours','Miles','Zip']]
+df_final['LastDateWorked']= pd.to_datetime(df_final['LastDateWorked'])
+df_final[['Hours','Miles']] = df_final[['Hours','Miles']].astype(str)
+#df_final['Hours'] = df_final['Hours'].astype(int)
+print("df_final")
+print(df_final)
+print(df_final.dtypes)
+df_final = df_final.sort_values(by=['LastDateWorked'], ascending=[True])
+mask = df_final['LastDateWorked'] > LastDate
+df_final = df_final.loc[mask]
+df_final = df_final.sort_values(by=['AppName'], ascending=[True])
+#df_final = df_final.str.lstrip(' ')
+df_final['LastDateWorked']= df_final['LastDateWorked'].astype(str)
+print(df_final)
+print(df_final.info())
+df_final = df_final.drop_duplicates(subset="AppName"
+                                    ,keep='first')
+df_final = df_final.drop_duplicates(subset="AppID"
+                                    ,keep='first')
+print(df_final)
+df_final.to_excel('M:/08_Geography/GEO/SpecialProjects/Recruiting/PeakOpsRecruiting/Data/RALocations/CurrentRAs.xlsx', index=False)
