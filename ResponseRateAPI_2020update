@@ -1,0 +1,300 @@
+import pandas as pd
+import csv
+import requests
+import numpy
+import json
+import arcpy
+import os
+import xlwt
+
+#############  DECLARING LOCAL VARIABLES
+
+
+#change these paths to match where you would like the resulting csv to be located on your own system. Make sure you keep .csv at the end ("your\\local\\path\\Tract_APIPull.csv"). This is where the csv files will be stored for importing into the gdb
+Tract_APIPull_csv = 'M:/08_Geography/GEO/ArcProjects/Directories/Brian/ResponseRates2020/ResponseRateMapper/Tract_APIpull.csv'
+County_APIpull_csv = 'M:/08_Geography/GEO/ArcProjects/Directories/Brian/ResponseRates2020/ResponseRateMapper/County_APIpull.csv'
+Place_APIPull_csv = 'M:/08_Geography/GEO/ArcProjects/Directories/Brian/ResponseRates2020/ResponseRateMapper/Place_APIpull.csv'
+MCD_APIPull_csv = 'M:/08_Geography/GEO/ArcProjects/Directories/Brian/ResponseRates2020/ResponseRateMapper/MCD_APIpull.csv'
+CD_APIPull_csv = 'M:/08_Geography/GEO/ArcProjects/Directories/Brian/ResponseRates2020/ResponseRateMapper/CD_APIpull.csv'
+
+#change this to where you would like to export the excel format for the API pull. This is an easier to read format than the CSVs and will only be generated for viewing data in tabular format, not for otherwise use in this script.
+exceloutput = 'M:/08_Geography/GEO/ArcProjects/Directories/Brian/ResponseRates2020/ResponseRateMapper/ResponseData.xls'
+
+#change this to where your file GDB is located that contains the regional geography files to join to. In order for this script to work, there must already be empty BAS20 vintage geography files present in the geodatabase for the data to join to.
+ResponseMapper_gdb = "M:/08_Geography/GEO/ArcProjects/Directories/Brian/ResponseRates2020/ResponseRateMapper/ResponseMapper.gdb"
+
+#Assign these variables the name of the featureclass ALREADY IN the geodatabaseabove. These are the original BAS20 vintage geography files. The data will be temporarily joined to these during the script but will return to their original state after the script has ran.
+#Ensure these all have a 'GEOID' text field for the data to join to or else the join will fail.
+Tracts_featureclass = "GEOID"               #GEOID field is state&county&tract FIPS codes concatenated
+Counties_featureclass = "GEOID"           #GEOID field is state&county FIPS codes concatenated
+CountySub_featureclass = "GEO_ID"              #GEOID field is state&county&county_subdivision FIPS codes concatenated
+IncPlaces_featureclass = "GEO_ID"         #GEOID field is state&place FIPS codes concatenated
+CD_featureclass = "Congress_2"  #GEOID field is state&congressional_district FIPS codes concatenated
+
+##insert your local regional state codes into this list, separated by a comma and with quotes on either side.
+Regional_States = ['10','11','21','24','39','42','47','51','54']
+
+#my personal API key, affording me unlimited API calls. obtain from census bureau developers page
+key = '88addaa28bbb2f5f7db63dca01c31f19da9b4c47'
+
+#############  END VARIABLE DECLARATION
+ 
+
+
+
+
+
+
+print('Grabbing data from API...')
+##creating empty dataframes to append the respective geography's API results to
+tracts_finaldf = pd.DataFrame()
+counties_finaldf = pd.DataFrame()
+MCD_finaldf = pd.DataFrame()
+place_finaldf = pd.DataFrame()
+cd_finaldf = pd.DataFrame()
+
+
+#iterating through all of the state FIPS codes for our region and adding that to the API URL
+for state in Regional_States:
+    print('Getting ' + state +  ' tracts...')  
+    t_url = 'https://api.census.gov/data/2020/dec/responserate?get=DRRALL,CRRINT,RESP_DATE,CRRALL,GEO_ID,DRRINT&for=tract:*&in=state:'+state+'&key='+key
+    r = requests.get(t_url)
+    tract_json = r.json()
+    #making a temporary dataframe from the json for each iteration and then appending it to the global dataframe    
+    t_df = pd.DataFrame(data= tract_json[1:],columns= tract_json[0])
+    tracts_finaldf= tracts_finaldf.append(t_df)
+    #Puerto Rico (FIPS code 72) does not have congressional districts, MCD or IncPlaces and therefore the API call to that URL would 404
+    if state != '72':
+        print('Getting State:' + state + ' Congressional Districts')
+        cd_url = 'https://api.census.gov/data/2020/dec/responserate?get=DRRALL,CRRINT,RESP_DATE,CRRALL,GEO_ID,DRRINT&for=congressional%20district:*&in=state:'+state+'&key='+key
+        cd_r = requests.get(cd_url)
+        cd_json = cd_r.json()
+        cd_df = pd.DataFrame(data= cd_json[1:],columns= cd_json[0])
+        cd_finaldf = cd_finaldf.append(cd_df)
+        print('Getting State:' + state + ' MCDs...')    
+        mcd_url = 'https://api.census.gov/data/2020/dec/responserate?get=DRRALL,CRRINT,RESP_DATE,CRRALL,GEO_ID,DRRINT&for=county%20subdivision:*&in=state:'+state+'&key='+key
+        mcd_r = requests.get(mcd_url)
+        mcd_json = mcd_r.json()
+        mcd_df = pd.DataFrame(data= mcd_json[1:],columns= mcd_json[0])
+        MCD_finaldf = MCD_finaldf.append(mcd_df)
+        print('Getting State:' + state + ' places...')
+        pl_url = 'https://api.census.gov/data/2020/dec/responserate?get=DRRALL,CRRINT,RESP_DATE,CRRALL,GEO_ID,DRRINT&for=place:*&in=state:'+state+'&key='+key
+        pl_r = requests.get(pl_url)
+        pl_json = pl_r.json()
+        pl_df = pd.DataFrame(data= pl_json[1:],columns= pl_json[0])
+        place_finaldf = place_finaldf.append(pl_df)
+    print('Getting State:' + state + ' counties...')
+    c_url = 'https://api.census.gov/data/2020/dec/responserate?get=DRRALL,CRRINT,RESP_DATE,CRRALL,GEO_ID,DRRINT&for=county:*&in=state:'+state+'&key='+key
+    county_r = requests.get(c_url)
+    county_json = county_r.json()
+    c_df = pd.DataFrame(data= county_json[1:],columns= county_json[0])
+    counties_finaldf = counties_finaldf.append(c_df)
+
+
+
+
+#The GEOID from the API includes a random string of 9 numbers before the actual geoid, in order to have this
+# join successfully to the shapefile we need to remove these characters
+# we are then exporting to a csv to import into a GDB
+tracts_finaldf['GEO_ID'] =  tracts_finaldf.GEO_ID.str.slice(start=9)
+tracts_finaldf.to_csv(Tract_APIPull_csv)
+counties_finaldf['GEO_ID'] =  counties_finaldf.GEO_ID.str.slice(start=9)
+counties_finaldf.to_csv(County_APIpull_csv)
+place_finaldf['GEO_ID'] =  place_finaldf.GEO_ID.str.slice(start=9)
+place_finaldf.to_csv(Place_APIPull_csv)
+MCD_finaldf['GEO_ID'] =  MCD_finaldf.GEO_ID.str.slice(start=9)
+MCD_finaldf.to_csv(MCD_APIPul_csv)
+cd_finaldf['GEO_ID'] =  cd_finaldf.GEO_ID.str.slice(start=9)
+cd_finaldf.to_csv(CD_APIPull_csv)
+
+
+#deleting the existing excel doc to create the new one with the new data
+if os.path.exists(exceloutput):
+    os.remove(exceloutput)
+
+
+workbook = xlwt.Workbook()
+workbook.add_sheet("Sheet")
+workbook.save(exceloutput)
+
+
+#writing the dataframes to individual sheets of the excel document. This excel document is for easy access of the data by partnerhsip and not
+#going to be used in this code
+with pd.ExcelWriter(exceloutput) as writer:
+    counties_finaldf.to_excel(writer, sheet_name='County')
+    tracts_finaldf.to_excel(writer, sheet_name='Tract')
+    MCD_finaldf.to_excel(writer, sheet_name='MCDs')
+    place_finaldf.to_excel(writer, sheet_name='Place')
+    cd_finaldf.to_excel(writer, sheet_name= 'CD')
+
+
+print('Data pulled successfully. ')
+print('***********************************')
+print('')
+print('Importing CSV to Geodatabase...')
+
+
+# Set the current workspace
+arcpy.env.workspace = ResponseMapper_gdb
+
+# Check for existence of data before deleting
+if arcpy.Exists("TractResponseRates"):
+    arcpy.Delete_management("TractResponseRates")
+if arcpy.Exists("CountyResponseRates"):
+    arcpy.Delete_management("CountyResponseRates")
+if arcpy.Exists("MCDResponseRates"):
+    arcpy.Delete_management("MCDResponseRates")
+if arcpy.Exists("PlaceResponseRates"):
+    arcpy.Delete_management("PlaceResponseRates")
+if arcpy.Exists("CDResponseRates"):
+    arcpy.Delete_management("CDResponseRates")
+    
+# Process: Table to Table
+arcpy.TableToTable_conversion(Tract_APIPull_csv, ResponseMapper_gdb, "TractResponseRates", "","Field1 \"Field1\" true true false 4 Long 0 0 ,First,#,"+Tract_APIPull_csv+",Field1,-1,-1;DRRALL \"DRRALL\" true true false 4 Double 0 0 ,First,#,"+Tract_APIPull_csv+",DRRALL,-1,-1;CRRINT \"CRRINT\" true true false 4 Double 0 0 ,First,#,"+Tract_APIPull_csv+",CRRINT,-1,-1;RESP_DATE \"RESP_DATE\" true true false 10 text 0 0 ,First,#,"+Tract_APIPull_csv+",RESP_DATE,-1,-1;CRRALL \"CRRALL\" true true false 4 Double 0 0 ,First,#,"+Tract_APIPull_csv+",CRRALL,-1,-1;GEO_ID \"GEO_ID\" true true false 12 Text 0 0 ,First,#,"+Tract_APIPull_csv+",GEO_ID,-1,-1;DRRINT \"DRRINT\" true true false 4 Double 0 0 ,First,#,"+Tract_APIPull_csv+",DRRINT,-1,-1;state \"state\" true true false 2 Text 0 0 ,First,#,"+Tract_APIPull_csv+",state,-1,-1;county \"county\" true true false 3 Text 0 0 ,First,#"+Tract_APIPull_csv+",county,-1,-1;tract \"tract\" true true false 6 Text 0 0 ,First,#"+Tract_APIPull_csv+",tract,-1,-1", "")
+arcpy.TableToTable_conversion(County_APIpull_csv, ResponseMapper_gdb, "CountyResponseRates", "", "Field1 \"Field1\" true true false 4 Long 0 0 ,First,#,"+County_APIpull_csv+",Field1,-1,-1;DRRALL \"DRRALL\" true true false 4 Double 0 0 ,First,#,"+County_APIpull_csv+",DRRALL,-1,-1;CRRINT \"CRRINT\" true true false 4 Double 0 0 ,First,#,"+County_APIpull_csv+",CRRINT,-1,-1;RESP_DATE \"RESP_DATE\" true true false 10 text 0 0 ,First,#,"+County_APIpull_csv+",RESP_DATE,-1,-1;CRRALL \"CRRALL\" true true false 4 Double 0 0 ,First,#,"+County_APIpull_csv+",CRRALL,-1,-1;GEO_ID \"GEO_ID\" true true false 8 Text 0 0 ,First,#,"+County_APIpull_csv+",GEO_ID,-1,-1;DRRINT \"DRRINT\" true true false 4 Double 0 0 ,First,#,"+County_APIpull_csv+",DRRINT,-1,-1;state \"state\" true true false 2 Text 0 0 ,First,#,"+County_APIpull_csv+",state,-1,-1;county \"county\" true true false 3 Text 0 0 ,First,#"+County_APIpull_csv+",county,-1,-1", "")
+arcpy.TableToTable_conversion(MCD_APIPull_csv, ResponseMapper_gdb, "MCDResponseRates","","Field1 \"Field1\" true true false 4 Long 0 0 ,First,#,"+MCD_APIPull_csv+",Field1,-1,-1;DRRALL \"DRRALL\" true true false 4 Double 0 0 ,First,#,"+MCD_APIPull_csv+",DRRALL,-1,-1;CRRINT \"CRRINT\" true true false 4 Double 0 0 ,First,#,"+MCD_APIPull_csv+",CRRINT,-1,-1;RESP_DATE \"RESP_DATE\" true true false 10 text 0 0 ,First,#,"+MCD_APIPull_csv+",RESP_DATE,-1,-1;CRRALL \"CRRALL\" true true false 4 Double 0 0 ,First,#,"+MCD_APIPull_csv+",CRRALL,-1,-1;GEO_ID \"GEO_ID\" true true false 12 Text 0 0 ,First,#,"+MCD_APIPull_csv+",GEO_ID,-1,-1;DRRINT \"DRRINT\" true true false 4 Double 0 0 ,First,#,"+MCD_APIPull_csv+",DRRINT,-1,-1;state \"state\" true true false 2 Text 0 0 ,First,#,"+MCD_APIPull_csv+",state,-1,-1;county \"county\" true true false 3 Text 0 0 ,First,#"+MCD_APIPull_csv+",county,-1,-1;county subdivision \"county subdivision\" true true false 5 Text 0 0 ,First,#"+MCD_APIPull_csv+"county subdivision,-1,-1", "")
+arcpy.TableToTable_conversion(Place_APIPull_csv, ResponseMapper_gdb, "PlaceResponseRates", "", "Field1 \"Field1\" true true false 4 Long 0 0 ,First,#,"+Place_APIPull_csv+",Field1,-1,-1;DRRALL \"DRRALL\" true true false 4 Double 0 0 ,First,#,"+Place_APIPull_csv+",DRRALL,-1,-1;CRRINT \"CRRINT\" true true false 4 Double 0 0 ,First,#,"+Place_APIPull_csv+",CRRINT,-1,-1;RESP_DATE \"RESP_DATE\" true true false 10 text 0 0 ,First,#,"+Place_APIPull_csv+",RESP_DATE,-1,-1;CRRALL \"CRRALL\" true true false 4 Double 0 0 ,First,#,"+Place_APIPull_csv+",CRRALL,-1,-1;GEO_ID \"GEO_ID\" true true false 11 Text 0 0 ,First,#,"+Place_APIPull_csv+",GEO_ID,-1,-1;DRRINT \"DRRINT\" true true false 4 Double 0 0 ,First,#,"+Place_APIPull_csv+",DRRINT,-1,-1;state \"state\" true true false 2 Text 0 0 ,First,#,"+Place_APIPull_csv+",state,-1,-1;place \"place\" true true false 3 Text 0 0 ,First,#"+Place_APIPull_csv+",place,-1,-1;","")
+arcpy.TableToTable_conversion(CD_APIPull_csv, ResponseMapper_gdb, "CDResponseRates", "", "Field1 \"Field1\" true true false 4 Long 0 0 ,First,#,"+CD_APIPull_csv+",Field1,-1,-1;DRRALL \"DRRALL\" true true false 4 Double 0 0 ,First,#,"+CD_APIPull_csv+",DRRALL,-1,-1;CRRINT \"CRRINT\" true true false 4 Double 0 0 ,First,#,"+CD_APIPull_csv+",CRRINT,-1,-1;RESP_DATE \"RESP_DATE\" true true false 10 text 0 0 ,First,#,"+CD_APIPull_csv+",RESP_DATE,-1,-1;CRRALL \"CRRALL\" true true false 4 Double 0 0 ,First,#,"+CD_APIPull_csv+",CRRALL,-1,-1;GEO_ID \"GEO_ID\" true true false 8 Text 0 0 ,First,#,"+CD_APIPull_csv+",GEO_ID,-1,-1;DRRINT \"DRRINT\" true true false 4 Double 0 0 ,First,#,"+CD_APIPull_csv+",DRRINT,-1,-1;state \"state\" true true false 2 Text 0 0 ,First,#,"+CD_APIPull_csv+",state,-1,-1;congressional district \"congressional district\" true true false 3 Text 0 0 ,First,#,"+CD_APIPull_csv+",congressional district,-1,-1;","")
+
+tracttable = ResponseMapper_gdb+'/TractResponseRates'
+countytable = ResponseMapper_gdb+'/CountyResponseRates'
+placetable = ResponseMapper_gdb+'/PlaceResponseRates'
+mcdtable = ResponseMapper_gdb+'/MCDResponseRates'
+cdtable =  ResponseMapper_gdb+'/CDResponseRates'
+
+
+print("data imported.")
+print('')
+print('adding leading zeros to GEOID field...')
+
+# add leading zeros to tract GEOID
+with arcpy.da.UpdateCursor(tracttable, "GEO_ID") as cursor:
+    for row in cursor:
+        if len(row[0]) == 10:
+            row[0] = "0"+ row[0]
+        cursor.updateRow(row)
+with arcpy.da.UpdateCursor(countytable, "GEO_ID") as cursor:
+    for row in cursor:
+        if len(row[0]) == 4:
+            row[0] = "0"+ row[0]
+        cursor.updateRow(row)
+with arcpy.da.UpdateCursor(placetable, "GEO_ID") as cursor:
+    for row in cursor:
+        if len(row[0]) == 6:
+            row[0] = "0"+ row[0]
+        cursor.updateRow(row)
+with arcpy.da.UpdateCursor(mcdtable, "GEO_ID") as cursor:
+    for row in cursor:
+        if len(row[0]) == 9:
+            row[0] = "0"+ row[0]
+        cursor.updateRow(row)
+with arcpy.da.UpdateCursor(cdtable, "GEO_ID") as cursor:
+    for row in cursor:
+        if len(row[0]) == 3:
+            row[0] = "0"+ row[0]
+        cursor.updateRow(row)
+
+
+
+
+print('')
+print('joining data to featureclass...')
+
+
+
+arcpy.MakeFeatureLayer_management(ResponseMapper_gdb+"/"+Tracts_featureclass,"Tracts")
+arcpy.MakeTableView_management(tracttable, "TractResponseData")
+
+arcpy.MakeFeatureLayer_management(ResponseMapper_gdb+"/"+Counties_featureclass,"Counties")
+arcpy.MakeTableView_management(countytable, "CountyResponseData")
+
+arcpy.MakeFeatureLayer_management(ResponseMapper_gdb+"/"+CountySub_featureclass,"MCDs")
+arcpy.MakeTableView_management(mcdtable, "MCDResponseData")
+
+arcpy.MakeFeatureLayer_management(ResponseMapper_gdb+"/"+IncPlaces_featureclass,"IncPlaces")
+arcpy.MakeTableView_management(placetable, "PlaceResponseData")
+
+arcpy.MakeFeatureLayer_management(ResponseMapper_gdb+"/"+CD_featureclass,"CongressionalDistricts")
+arcpy.MakeTableView_management(cdtable, "CDResponseData")
+
+inlayer = "Tracts"
+in_Field = "GEOID"
+joinTable = "TractResponseData"
+joinField = "GEO_ID"
+
+arcpy.AddJoin_management (inlayer, in_Field, joinTable, joinField)
+
+if arcpy.Exists("Tracts_Joined"):
+    arcpy.Delete_management("Tracts_Joined")
+    
+arcpy.CopyFeatures_management(inlayer,ResponseMapper_gdb+"/Tracts_Joined" )
+
+arcpy.RemoveJoin_management (inlayer)
+
+inlayer = "Counties"
+in_Field = "GEOID"
+joinTable = "CountyResponseData"
+joinField = "GEO_ID"
+
+arcpy.AddJoin_management (inlayer, in_Field, joinTable, joinField)
+
+
+if arcpy.Exists("Counties_Joined"):
+    arcpy.Delete_management("Counties_Joined")
+
+    
+arcpy.CopyFeatures_management(inlayer,ResponseMapper_gdb+"/Counties_Joined" )
+
+arcpy.RemoveJoin_management (inlayer)
+
+inlayer = "MCDs"
+in_Field = "GEOID"
+joinTable = "MCDResponseData"
+joinField = "GEO_ID"
+
+arcpy.AddJoin_management (inlayer, in_Field, joinTable, joinField)
+
+
+if arcpy.Exists("MCDs_Joined"):
+    arcpy.Delete_management("MCDs_Joined")
+
+    
+arcpy.CopyFeatures_management(inlayer,ResponseMapper_gdb+"/MCDs_Joined" )
+
+arcpy.RemoveJoin_management (inlayer)
+
+inlayer = "IncPlaces"
+in_Field = "GEOID"
+joinTable = "PlaceResponseData"
+joinField = "GEO_ID"
+
+arcpy.AddJoin_management (inlayer, in_Field, joinTable, joinField)
+
+
+if arcpy.Exists("IncPlaces_Joined"):
+    arcpy.Delete_management("IncPlaces_Joined")
+
+    
+arcpy.CopyFeatures_management(inlayer,ResponseMapper_gdb+"/IncPlaces_Joined" )
+
+arcpy.RemoveJoin_management (inlayer)
+
+
+inlayer = "CongressionalDistricts"
+in_Field = "GEOID"
+joinTable = "CDResponseData"
+joinField = "GEO_ID"
+
+arcpy.AddJoin_management (inlayer, in_Field, joinTable, joinField)
+
+
+if arcpy.Exists("CongressionalDistricts_Joined"):
+    arcpy.Delete_management("CongressionalDistricts_Joined")
+
+    
+arcpy.CopyFeatures_management(inlayer,ResponseMapper_gdb+"/CongressionalDistricts_Joined" )
+
+arcpy.RemoveJoin_management (inlayer)
+
+print('')
+raw_input('Feature data updated successfully. ArcMap document updated with new data. Press any key to exit;')
