@@ -1,0 +1,81 @@
+__author__ = 'schan311'
+import arcpy
+import os
+import os.path
+import shutil
+arcpy.env.overwriteOutput = True
+
+CountyTracts = ['4200100246300',
+'4201100335800',
+'4201500001500',
+'4202900027000',
+'4202900027300',
+'4202900709800',
+'4202900813200',
+'4204500000600',
+'4204500020400',
+'4204500379500',
+'4205500244100',
+'4205500246400',
+'4205500279800',
+'4205500290500',
+'4206300216600',
+'4207700706800',
+'4209500004600',
+'4209500088600',
+'4209500088700',
+'4209500235200',
+'4211100112800',
+'4211100231700',
+'4211700001100',
+'4212700000100',
+'4212700014400',
+'4212900016700',
+'4212900017200',
+'4213300712900',
+'4213300713300',
+'4213300763300',
+'4213300770500']
+src = r"M:/08_Geography/GEO/ArcProjects/Directories/Brian/Shapefiles/BCU_Harrisburg.shp"
+Tract_field = 'stcobcu'
+Tract_Layer = "M:/08_Geography/GEO/ArcProjects/Directories/Brian/Layers/BCU_KML.lyr"
+Lane_folder = "M:/08_Geography/GEO/SpecialProjects/BCU_DB/Lanes/Harrisburg/"
+New_folder = "M:/08_Geography/GEO/SpecialProjects/BCU_DB/Lanes/Harrisburg/New/"
+Tract_shape = "M:/08_Geography/GEO/ArcProjects/Directories/Brian/Shapefiles/BCU_lyr.shp"
+
+""" LAST CREATED KML - 5116500023800 """
+
+arcpy.AddMessage("Begin creating KMLs for all missing BCUs in Harrisburg")
+for Tract in CountyTracts:
+    Tract_name = "{0}".format(Tract)
+    arcpy.AddMessage(Tract_name)
+    Tract_file = Tract_name + ".kmz"
+    Tract_path = Lane_folder + Tract_file
+    check = os.path.exists(BCU_path)
+    if check is True:
+        arcpy.AddMessage(BCU_file + " already exists")
+    else:
+        fld = arcpy.AddFieldDelimiters(src, BCU_field)
+        where ="{0} = '{1}'".format(fld, BCU)
+        arcpy.MakeFeatureLayer_management(src, "BCU" + " " + "{0}".format(BCU),where)
+        arcpy.ApplySymbologyFromLayer_management("BCU" + " " + "{0}".format(BCU), BCU_Layer)
+        kmz = os.path.join(New_folder, "{0}.kmz".format(BCU))
+        arcpy.LayerToKML_conversion("BCU" + " " + "{0}".format(BCU), kmz)
+        arcpy.AddMessage(BCU_name + " KML created")
+        shutil.move(kmz, Lane_folder)
+        arcpy.AddMessage(BCU_name + " has been moved to the Lane folder")
+arcpy.AddMessage("All missing BCU KMLs for Harrisburg are complete")
+arcpy.AddMessage("Begin check to ensure all BCU KMLs for Harrisburg have been created")
+lst_still_missing = []
+for BCU in HarrisburgBCUs:
+    BCU_name = "{0}".format(BCU)
+    file_name = BCU_name + ".kmz"
+    BCU_path = Lane_folder + file_name
+    check = os.path.exists(BCU_path)
+    if check is True:
+        pass
+    else:
+        arcpy.AddMessage(BCU_name + " does not exist")
+        lst_still_missing.append(BCU_name)
+arcpy.AddMessage("The following list contains the BCUs that are still missing KMLs in Harrisburg")
+arcpy.AddMessage(lst_still_missing)
