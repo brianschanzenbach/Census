@@ -1,0 +1,130 @@
+__author__ = 'schan311'
+import pandas as pd
+import csv
+import requests
+import numpy
+import json
+import arcpy
+import os
+import xlwt
+import shutil
+from time import strftime
+from datetime import datetime, timedelta
+import numpy as np
+
+arcpy.env.overwriteOutput=True
+"""
+arcpy.AddMessage("Begin importing spreadsheets to be used in creating the CFM & CFS Response Rate spreadsheets...")
+df = pd.read_excel('M:/08_Geography/GEO/SpecialProjects/ResponseRates/Spreadsheets/TractMatching.xlsx')
+df_2 = pd.read_excel('M:/08_Geography/GEO/SpecialProjects/ResponseRates/Spreadsheets/CFMCFSMatching.xlsx')
+df_3 = pd.read_csv('M:/08_Geography/GEO/SpecialProjects/ResponseRates/ResponseRateMapper/Tract_APIpull.csv',usecols=['GEO_ID','CRRALL'],dtype=object)
+#print(df)
+#print(df.dtypes)
+#print(df_2)
+#print(df_2.dtypes)
+#print(df_3)
+#print(df.dtypes)
+cols=[i for i in df.columns if i not in ["tract_new"]]
+#print(cols)
+for col in cols:
+    print(col)
+    df[col]=pd.to_numeric(df[col])
+#print(df.dtypes)
+#print(df_2.dtypes)
+cols=[i for i in df_2.columns if i not in []]
+#print(cols)
+for col in cols:
+    #print(col)
+    df_2[col]=pd.to_numeric(df_2[col])
+#print(df_2.dtypes)
+#print(df_3.dtypes)
+cols=[i for i in df_3.columns]
+#print(cols)
+for col in cols:
+    #print(col)
+    df_3[col]=pd.to_numeric(df_3[col])
+#print(df_3.dtypes)
+
+arcpy.AddMessage("Begin merging the response rate data to the tract match by bcu spreadsheet...")
+df_int = pd.merge(df,
+                  df_3,
+                  left_on='tract_new',
+                  right_on='GEO_ID',
+                  how='left')
+arcpy.AddMessage("Response rate data merge to the tract match by bcu spreadsheet complete...")
+#print(df_int)
+#print("above is original merge")
+arcpy.AddMessage("Begin calculating response rate updates...")
+df_int["RspnRate"]=df_int["CRRALL"]
+#print(df_int)
+df_int = df_int[['tract_old','stcobcu','tract_new','TotHU','RspnRate']]
+#print(df_int)
+df_bcu = df_int
+df_bcu["RspondedHU"]=df_bcu["TotHU"]*df_bcu["RspnRate"]*.01
+df_bcu["NoRspnHU"]=df_bcu["TotHU"]-df_bcu["RspondedHU"]
+print(df_bcu)
+df_bcu=df_bcu.round({'RspondedHU':0,'NoRspnHU':0})
+print(df_bcu)
+df_bcu.to_csv('M:/08_Geography/GEO/SpecialProjects/ResponseRates/Spreadsheets/ResponseRates_byBCU.csv')
+arcpy.AddMessage("Response rate update calculations complete...")
+arcpy.AddMessage("Begin merging the cfm/cfs zones to the bcu spreadsheet...")
+df_final = pd.merge(df_int,
+                    df_2,
+                    left_on='stcobcu',
+                    right_on='stcobcu',
+                    how='left')
+#print(df_final)
+arcpy.AddMessage("cfm/cfs zones merge to the bcu spreadsheet complete...")
+arcpy.AddMessage("Begin dissolving by CFM to get the CFM spreadsheet...")
+df_cfm = df_final.groupby(['CFM']).agg({'TotHU':"sum",'RspnRate':"mean"})
+df_cfm["RspondedHU"]=df_cfm["TotHU"]*df_cfm["RspnRate"]*.01
+df_cfm["NoRspnHU"]=df_cfm["TotHU"]-df_cfm["RspondedHU"]
+df_cfm = df_cfm.drop([0])
+print(df_cfm)
+arcpy.AddMessage("CFM dissolve complete...")
+arcpy.AddMessage("Begin dissolving by CFS to get the CFS spreadsheet...")
+df_cfs = df_final.groupby(['CFS']).agg({'TotHU':"sum",'RspnRate':"mean"})
+df_cfs["RspondedHU"]=df_cfs["TotHU"]*df_cfs["RspnRate"]*.01
+df_cfs["NoRspnHU"]=df_cfs["TotHU"]-df_cfs["RspondedHU"]
+df_cfs = df_cfs.drop([0])
+print(df_cfs)
+
+arcpy.AddMessage("Begin exporting CFM & CFS spreadsheets...")
+df_cfm.to_csv('M:/08_Geography/GEO/SpecialProjects/ResponseRates/Spreadsheets/ResponseRates_byCFM.csv')
+df_cfs.to_csv('M:/08_Geography/GEO/SpecialProjects/ResponseRates/Spreadsheets/ResponseRates_byCFS.csv')
+with pd.ExcelWriter('M:/08_Geography/GEO/SpecialProjects/ResponseRates/Spreadsheets/ResponseRates_byCFMCFS.xls') as writer:
+    df_cfm.to_excel(writer, sheet_name='CFM')
+    df_cfs.to_excel(writer, sheet_name='CFS')
+shutil.copy('M:/08_Geography/GEO/SpecialProjects/ResponseRates/Spreadsheets/ResponseRates_byCFMCFS.xls','M:/08_Geography/GEO/SpecialProjects/ResponseRates/')
+arcpy.AddMessage("CFM & CFS spreadsheet export complete...")
+shutil.copy('M:/08_Geography/GEO/SpecialProjects/ResponseRates/Spreadsheets/ResponseRates_byCFMCFS.xls','M:/08_Geography/GEO/SpecialProjects/ResponseRates/')
+arcpy.AddMessage("Located here: M:08_Geography>GEO>SpecialProjects>ResponseRates , Named: ResponseRates_byCFM(S) for csv and ResponseRates_byCFMCFS for xls")
+"""
+arcpy.AddMessage("Begin archiving old maps...")
+ArchiveFolder = 'M:/08_Geography/GEO/SpecialProjects/ResponseRates/Maps/Archive/'
+ArchiveDay = (datetime.now()-timedelta(1)).strftime("%m-%d-%y")
+CFMCFSfolder = 'M:/08_Geography/GEO/SpecialProjects/ResponseRates/Maps/CFM_CFS/'
+
+#shutil.copytree(CFMCFSfolder,ArchiveFolder + "CFM_CFS_" + ArchiveDay + "/")
+arcpy.AddMessage("Old maps archived...")
+
+for f in os.listdir(CFMCFSfolder):
+    try:
+        print(f)
+        os.remove(os.path.join(CFMCFSfolder, f))
+    except:
+        arcpy.AddMessage("Someone is using " + f)
+
+Day = (datetime.now()-timedelta(0)).strftime("%m%d")
+mxd = arcpy.mapping.MapDocument(r"M:\08_Geography\GEO\SpecialProjects\ResponseRates\MXDs\ResponseRates_byCFM_CFS.mxd")
+arcpy.AddMessage("Begin exporting CFM CFS Response Rate Maps by ACO...")
+pageNameField = "ACO_CODE_I"
+for pageNum in range(1, mxd.dataDrivenPages.pageCount + 1):
+    mxd.dataDrivenPages.currentPageID = pageNum
+    pageName = mxd.dataDrivenPages.pageRow.getValue(pageNameField)
+    path = r"M:\08_Geography\GEO\SpecialProjects\ResponseRates\Maps\CFM_CFS\CFMCFSResponseRates_" + str(pageName) + "_" + Day + ".pdf"
+    print(path)
+    arcpy.AddMessage("Exporting CFM CFS Response Rate Map for ACO {0} of {1}".format(str(mxd.dataDrivenPages.currentPageID), str(mxd.dataDrivenPages.pageCount)))
+    arcpy.mapping.ExportToPDF(mxd, path)
+arcpy.AddMessage("New maps created...")
+arcpy.AddMessage("Located here: M:>08_Geography>GEO>SpecialProjects>ResponseRates>Maps>CFM_CFS, Named: ResponseRates_byCFM_CFS_"+Day+"_ACO")
